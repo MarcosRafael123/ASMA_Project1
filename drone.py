@@ -5,10 +5,43 @@ from spade.message import Message
 from spade.template import Template
 
 class Drone(Agent):
-    capacity = None
-    autonomy = None
+    def __init__(self):
+        self.capacity = None
+        self.autonomy = None
+        self.velocity = None
+        self.number = None
 
+    @property
+    def capacity(self):
+        return self.capacity
 
+    @capacity.setter
+    def capacity(self, value):
+        self.capacity = value
+
+    @property
+    def autonomy(self):
+        return self.autonomy
+
+    @autonomy.setter
+    def autonomy(self, value):
+        self.autonomy = value
+
+    @property
+    def velocity(self):
+        return self.velocity
+
+    @velocity.setter
+    def velocity(self, value):
+        self.velocity = value
+
+    @property
+    def number(self):
+        return self.number
+
+    @number.setter
+    def number(self, value):
+        self.umber = value
 
     class InformBehav(OneShotBehaviour):
         async def run(self):
