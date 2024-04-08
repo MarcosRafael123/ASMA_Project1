@@ -1,38 +1,32 @@
 class Order:
-    def __init__(self):
-        self.id = None
-        self.weight = None
-        self.latitude = None
-        self.longitude = None
+    def __init__(self, id=None, destination=(0.0,0.0), weight=0):
+        self._id = id
+        self._destination = destination  # (latitude, longitude)
+        self._weight = weight
 
+    # Getter and setter for id attribute
     @property
     def id(self):
-        return self.id
+        return self._id
 
-    @latitude.setter
+    @id.setter
     def id(self, value):
-        self.id = value
+        self._id = value
 
+    # Getter and setter for weight attribute
     @property
     def weight(self):
-        return self.weight
+        return self._weight
 
-    @longitude.setter
+    @weight.setter
     def weight(self, value):
-        self.weight = value
+        self._weight = value
 
+    # Getter and setter for destination attribute
     @property
-    def latitude(self):
-        return self.latitude
+    def destination(self):
+        return self._destination
 
-    @latitude.setter
-    def latitude(self, value):
-        self.latitude = value
-
-    @property
-    def longitude(self):
-        return self.longitude
-
-    @longitude.setter
-    def longitude(self, value):
-        self.longitude = value
+    @destination.setter
+    def destination(self, value):
+        self._destination = value

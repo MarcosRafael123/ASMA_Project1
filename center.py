@@ -5,6 +5,25 @@ from spade.message import Message
 from spade.template import Template
 
 
+class Center(Agent):
+    id = None
+    pos = () # (latitude, longitude)
+    orders = []
+
+    def __init__(self, jid, password, id, pos=()):
+        super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
+        self.id = id
+        self.pos = pos
+        return
+    
+    def get_orders(self):
+        return self.orders
+
+    def add_order(self,order):
+        self.orders.append(order)
+        return
+        
+
 class SenderAgent(Agent):
     class InformBehav(OneShotBehaviour):
         async def run(self):
@@ -44,22 +63,3 @@ class ReceiverAgent(Agent):
         template = Template()
         template.set_metadata("performative", "inform")
         self.add_behaviour(b, template)
-
-
-
-async def main():
-    
-    receiveragent = ReceiverAgent("admin@leandro", "admin")
-    await receiveragent.start(auto_register=True)
-    print("Receiver started")
-
-    senderagent = SenderAgent("dummy@leandro", "dummy")
-    await senderagent.start(auto_register=True)
-    print("Sender started")
-
-    await spade.wait_until_finished(receiveragent)
-    print("Agents finished")
-
-
-if __name__ == "__main__":
-    spade.run(main())

@@ -5,27 +5,31 @@ from spade.message import Message
 from spade.template import Template
 
 class Drone(Agent):
-    capacity = None
-    autonomy = None
-    velocity = None
+    id = None
+    capacity = None # kg
+    autonomy = None # km
+    velocity = None # m/s
+    initial_pos = None
 
-    def __init__(self, jid, password,capacity=0, autonomy=0,velocity=0):
+    def __init__(self, jid, password, id, capacity=0, autonomy=0,velocity=0, initial_pos=None):
         super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
+        self.id = id
         self.capacity = capacity
         self.autonomy = autonomy
         self.velocity = velocity
-
-
-#write a function that calculates distance using haversine
+        self.initial_pos = initial_pos
 
     class InformBehav(OneShotBehaviour):
         async def run(self):
             print("InformBehav running")
             msg = Message(to="admin@leandro")     # Instantiate the message
             msg.set_metadata("performative", "inform")  # Set the "inform" FIPA performative
+
+            msg.body = "ID=" + str(self.agent.id) + "\n"  
             msg.body = "Velocity=" + str(self.agent.velocity) + "\n"                    # Set the message content
             msg.body += "Capacity=" + str(self.agent.capacity) + "\n" 
-            msg.body += "Autonomy=" + str(self.agent.autonomy)
+            msg.body += "Autonomy=" + str(self.agent.autonomy) + "\n"
+            msg.body += "Initial_pos=" + str(self.agent.initial_pos)
 
             print("body: \n" + msg.body)
 
