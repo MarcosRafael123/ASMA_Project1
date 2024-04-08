@@ -5,64 +5,36 @@ from spade.message import Message
 from spade.template import Template
 
 class Drone(Agent):
-    def __init__(self):
-        self.capacity = None
-        self.autonomy = None
-        self.velocity = None
-        self.number = None
+    capacity = None
+    autonomy = None
+    velocity = None
 
-    @property
-    def capacity(self):
-        return self.capacity
+    def __init__(self, jid, password,capacity=0, autonomy=0,velocity=0):
+        super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
+        self.capacity = capacity
+        self.autonomy = autonomy
+        self.velocity = velocity
 
-    @capacity.setter
-    def capacity(self, value):
-        self.capacity = value
 
-    @property
-    def autonomy(self):
-        return self.autonomy
-
-    @autonomy.setter
-    def autonomy(self, value):
-        self.autonomy = value
-
-    @property
-    def velocity(self):
-        return self.velocity
-
-    @velocity.setter
-    def velocity(self, value):
-        self.velocity = value
-
-    @property
-    def number(self):
-        return self.number
-
-    @number.setter
-    def number(self, value):
-        self.umber = value
+#write a function that calculates distance using haversine
 
     class InformBehav(OneShotBehaviour):
         async def run(self):
             print("InformBehav running")
             msg = Message(to="admin@leandro")     # Instantiate the message
             msg.set_metadata("performative", "inform")  # Set the "inform" FIPA performative
-            msg.body = "Hello World"                    # Set the message content
+            msg.body = "Velocity=" + str(self.agent.velocity) + "\n"                    # Set the message content
+            msg.body += "Capacity=" + str(self.agent.capacity) + "\n" 
+            msg.body += "Autonomy=" + str(self.agent.autonomy)
+
+            print("body: \n" + msg.body)
 
             await self.send(msg)
             print("Message sent!")
 
             # stop agent from behaviour
             await self.agent.stop()
-
-    async def setup(self):
-        print("SenderAgent started")
-        b = self.InformBehav()
-
-        self.add_behaviour()
-
-class ReceiverAgent(Agent):
+            
     class RecvBehav(OneShotBehaviour):
         async def run(self):
             print("RecvBehav running")
@@ -77,27 +49,16 @@ class ReceiverAgent(Agent):
             await self.agent.stop()
 
     async def setup(self):
+        print("SenderAgent started")
+        b = self.InformBehav()
+
+        self.add_behaviour(b)
+
+class ReceiverAgent(Agent):
+
+    async def setup(self):
         print("ReceiverAgent started")
         b = self.RecvBehav()
         template = Template()
         template.set_metadata("performative", "inform")
         self.add_behaviour(b, template)
-
-
-
-async def main():
-    
-    receiveragent = ReceiverAgent("admin@leandro", "admin")
-    await receiveragent.start(auto_register=True)
-    print("Receiver started")
-
-    senderagent = SenderAgent("dummy@leandro", "dummy")
-    await senderagent.start(auto_register=True)
-    print("Sender started")
-
-    await spade.wait_until_finished(receiveragent)
-    print("Agents finished")
-
-
-if __name__ == "__main__":
-    spade.run(main())
