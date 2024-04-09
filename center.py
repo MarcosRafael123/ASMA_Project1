@@ -1,76 +1,34 @@
 import spade
-import asyncio
-import pandas as pd
 from spade.agent import Agent
 from spade.behaviour import OneShotBehaviour
 from spade.message import Message
 from spade.template import Template
-from order import Order
+
 
 class Center(Agent):
-    def __init__(self, jid, password, id=None, pos=(), data_file=None):
+    def __init__(self, jid, password, id, pos=(),orders=None):
         super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
         self.id = id
-        self.pos = pos
-        self.orders = []
-        self.data_file = data_file
-
-    async def setup(self):
-        if self.data_file:
-            data = pd.read_csv(self.data_file, sep=';')
-            self.id = data.at[0, 'id']
-            self.pos = self.pos + (data.at[0, 'latitude'], data.at[0, 'longitude'])
-
+        self.pos = pos # (latitude, longitude)
+        self.orders = orders if orders is not None else []
+        return
+    
+    def get_pos(self):
+        return self.pos
+    
     def get_orders(self):
         return self.orders
-
-    async def add_order(self, order):
-        self.orders.append(order)
-
-
-async def main():
     
-    # Create instances of Center
-    center1 = Center('admin@hplaptop', 'admin', data_file='data/delivery_center1.csv')
-    center2 = Center('admin@hplaptop', 'admin', data_file='data/delivery_center2.csv')
+    def clear_orders(self):
+        self.orders = []
+        return
 
-    # Start the agents
-    await center1.start()
-    await center2.start()
-
-    data1 = pd.read_csv('data/delivery_center1.csv', sep=';')
-    for i in range (data1.shape[0]):
-        if (i == 0):
-            continue
-        await center1.add_order(Order(data1.at[i,'id'], (data1.at[i,'latitude'], data1.at[i,'longitude']), data1.at[i,'weight']))
-
-    data2 = pd.read_csv('data/delivery_center2.csv', sep=';')
-    for i in range (data2.shape[0]):
-        if (i == 0):
-            continue
-        await center2.add_order(Order(data2.at[i,'id'], (data2.at[i,'latitude'], data2.at[i,'longitude']), data2.at[i,'weight']))
-
-    print(center1.get_orders())  # Should print ["Order1"]
-    print(center2.get_orders())  # Should print ["Order2"]
-
-    """ # Stop the agents when done
-    await center1.stop()
-    await center2.stop() """
-
-# Run the main function
-asyncio.run(main())
-
-
-
-
-
-
-
-
-
+    def add_order(self,order):
+        self.orders.append(order)
+        return
         
 
-""" class SenderAgent(Agent):
+class SenderAgent(Agent):
     class InformBehav(OneShotBehaviour):
         async def run(self):
             print("InformBehav running")
@@ -94,7 +52,7 @@ class ReceiverAgent(Agent):
         async def run(self):
             print("RecvBehav running")
 
-            msg = await self.receive(timeout=10) # wait for a message for 10 seconds
+            msg = await self.receive(timeout=30) # wait for a message for 10 seconds
             if msg:
                 print("Message received with content: {}".format(msg.body))
             else:
@@ -108,4 +66,4 @@ class ReceiverAgent(Agent):
         b = self.RecvBehav()
         template = Template()
         template.set_metadata("performative", "inform")
-        self.add_behaviour(b, template) """
+        self.add_behaviour(b, template)
