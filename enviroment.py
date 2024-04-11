@@ -11,7 +11,7 @@ DATA_DIR = "data"
 DRONE_DATA = os.path.join(os.getcwd(), DATA_DIR, "delivery_drones.csv")
 
 # XMPP Host name
-hostname = "localhost"
+hostname = "hplaptop"
 
 
 def build_droneAgents():
