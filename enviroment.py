@@ -1,4 +1,5 @@
 import spade
+import asyncio
 import os
 import csv
 import utils
@@ -9,26 +10,12 @@ from order import Order
 DATA_DIR = "data"
 DRONE_DATA = os.path.join(os.getcwd(), DATA_DIR, "delivery_drones.csv")
 
-# XMPP account details
-username = "admin"
-password = "admin"
-hostname = "leandro"
-
-
-# center1 = loc1
-# center2 = loc2
-# center3 = loc3
-
-# Um excel para cada centro/warehouse
-# Several drones scattered around the enviroment
-# Centers/warehouses send requests to the drones and drones decide what to accept
-
-
-# def build_enviroment():
+# XMPP Host name
+hostname = "localhost"
 
 
 def build_droneAgents():
-    droneAgents = []
+    droneAgents = {}
     with open(DRONE_DATA, 'r', newline='') as csvfile:
         csvreader = csv.reader(csvfile,delimiter=';')
         next(csvreader)  # Skip the header row
@@ -40,7 +27,7 @@ def build_droneAgents():
             init_pos = row[4]
 
             new_drone = Drone(f"{id}@{hostname}", id, id,velocity=velocity,capacity=capacity,autonomy=autonomy,initial_pos=init_pos)
-            droneAgents.append(new_drone)
+            droneAgents[id] = new_drone
     return droneAgents
 
 
@@ -80,6 +67,7 @@ def build_centerAgents(files):
 
 def build_enviroment():
 
+    # Get all the files related to centers
     center_files = []
     csv_data_files = utils.find_files(DATA_DIR, ".csv")
     for file in csv_data_files:
@@ -88,41 +76,42 @@ def build_enviroment():
         file = os.path.join(os.getcwd(), DATA_DIR, file)
         center_files.append(file)
 
+    # Build the center agents according to data on the files
     centerAgents = build_centerAgents(center_files)
 
-    print(centerAgents)
-    print(centerAgents['center1'].jid)
-    print(centerAgents['center2'].jid)
-    print(centerAgents['center1'].password)
-    print(centerAgents['center2'].password)
-    print(len(centerAgents['center1'].get_orders()))
-    print(len(centerAgents['center2'].get_orders()))
-    print(centerAgents['center1'].get_pos())
-    print(centerAgents['center2'].get_pos())
-
-    print(centerAgents['center1'].get_orders()[0])
-    print(centerAgents['center2'].get_orders()[0])
-    
+    # Build drone agents
     droneAgents = build_droneAgents()
 
     return (centerAgents, droneAgents)
 
 
 
-def main():
+async def main():
 
 
     (centerAgents, droneAgents) = build_enviroment()
 
-    # await drone.start(auto_register=True)
-    # print("Drone started")
+    print("Starting agents")
 
-    # senderagent = SenderAgent("dummy@leandro", "dummy")
-    # await senderagent.start(auto_register=True)
-    # print("Sender started")
+    for drone in droneAgents.values():
+        drone.setCenters(centerAgents.keys())
 
-    # await spade.wait_until_finished(drone)
-    # print("Agents finished")
+    # Start all drone agents concurrently
+    drone_starts = [droneAgents[drone_id].start(auto_register=True) for drone_id in droneAgents]
+    await asyncio.gather(*drone_starts)
+    droneAgents[list(droneAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10000")
+
+    for center in centerAgents.values():
+        center.setDrones(droneAgents.keys())
+
+    # Start all center agents concurrently
+    center_starts = [centerAgents[center_id].start(auto_register=True) for center_id in centerAgents]
+    await asyncio.gather(*center_starts)
+    centerAgents[list(centerAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10001")
+
+
+    await spade.wait_until_finished(drone)
+    print("Agents finished")
 
 
 if __name__ == "__main__":

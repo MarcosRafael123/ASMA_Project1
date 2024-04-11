@@ -34,3 +34,10 @@ class Order:
 
     def __str__(self):
         return f"Order ID={self._id} weight={self._weight} dest={self._destination}"
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "weight": self.weight,
+            "destination": self.destination
+        }

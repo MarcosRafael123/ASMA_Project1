@@ -1,3 +1,4 @@
+import asyncio
 import spade
 from spade.agent import Agent
 from spade.behaviour import OneShotBehaviour
@@ -19,10 +20,15 @@ class Drone(Agent):
         self.velocity = velocity
         self.initial_pos = initial_pos
 
+    
+    def setCenters(self, center_ids):
+        self.center_ids = center_ids
+
     class InformBehav(OneShotBehaviour):
+
         async def run(self):
             print("InformBehav running")
-            msg = Message(to="admin@leandro")     # Instantiate the message
+            msg = Message(to="admin@localhost")     # Instantiate the message
             msg.set_metadata("performative", "inform")  # Set the "inform" FIPA performative
 
             msg.body = "ID=" + str(self.agent.id) + "\n"  
@@ -41,28 +47,54 @@ class Drone(Agent):
             
     class RecvBehav(OneShotBehaviour):
         async def run(self):
-            print("RecvBehav running")
 
-            msg = await self.receive(timeout=30) # wait for a message for 10 seconds
-            if msg:
-                print("Message received with content: {}".format(msg.body))
-            else:
-                print("Did not received any message after 10 seconds")
+            for center_id in self.agent.center_ids:
+                msg = await self.receive(60)  # Wait indefinitely for a message
+                if msg:
+                    print("Message received with content: {}".format(msg.body))
+                else:
+                    print("Did not receive any message")
+            
+            # Stop agent from behavior
+            # await self.agent.stop()
 
-            # stop agent from behaviour
+    class LongBehav(OneShotBehaviour):
+        async def run(self):
+            await asyncio.sleep(100)
+            print("Long Behaviour has finished")
+
+    class WaitingBehav(OneShotBehaviour):
+        async def run(self):
+            await self.agent.L.join()  # this join must be awaited
+            print("Waiting Behaviour has finished")
+            # Stop agent from behavior
             await self.agent.stop()
 
     async def setup(self):
-        print("SenderAgent started")
-        b = self.InformBehav()
-
-        self.add_behaviour(b)
-
-class ReceiverAgent(Agent):
-
-    async def setup(self):
-        print("ReceiverAgent started")
+        print(f"{self.id} ReceiverBehav started")
         b = self.RecvBehav()
+        self.L = self.LongBehav()
+        W = self.WaitingBehav()
+
+        # print(self.presence.state)  # Gets your current PresenceState instance.
+
+        # print(self.presence.is_available())  # Returns a boolean to report wether the agent is available or not
+
         template = Template()
-        template.set_metadata("performative", "inform")
-        self.add_behaviour(b, template)
+        # template.set_metadata("performative", "inform")
+        # self.add_behaviour(b, template)
+        self.add_behaviour(b)
+        # self.add_behaviour(self.L)
+        # self.add_behaviour(W)
+
+
+
+
+# class ReceiverAgent(Agent):
+
+    # async def setup(self):
+    #     print("ReceiverAgent started")
+    #     b = self.RecvBehav()
+    #     template = Template()
+    #     template.set_metadata("performative", "inform")
+    #     self.add_behaviour(b, template)
