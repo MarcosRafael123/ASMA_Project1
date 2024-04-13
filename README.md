@@ -23,9 +23,12 @@ drone4 drone4
 - Protocolo em caso de negociação (para casos em que mais que um drone está interessado numa mesma order) (se os mesmos drones estao interessados nas mesmas duas (ou mais) orders -> começa-se por negociar a order com menor ID -> Indicar ao centro que quer começar negociação) (se um drone sofrer timeout perde a negociação)
 
 - Avaliação da eficiencia do sistema de entrega -> Cada drone possuirá no fim da execução uma lista completa do percurso que realizou.
-    ex: center1 - order1_3 - order1_4 - center2 - order2_7 - order1_2 - center1
-    Calcular quanto tempo cada drone demorou, quantas entregas entregou, quanta distancia percorreu, quantos kilos carregou.
-    Fazer estatisticas gerais para o sistema (para todos os drones) (media, moda, mediana)
+    - ex: center1 - order1_3 - order1_4 - center2 - order2_7 - order1_2 - center1
+    - Calcular quanto tempo cada drone demorou, quantas entregas entregou, quanta distancia percorreu, quantos kilos carregou.
+    Fazer estatisticas gerais para o sistema (para todos os drones) (media,  mediana)
+    - Enunciado: "tempo de
+entrega (pode ser medido em distância percorrida) total, médio, mínimo e máximo, taxa de
+ocupação de drones e consumo de energia"
 
 
 Flow proposto:
@@ -44,4 +47,4 @@ Drones e centros são iniciados
     - Propostas podem ser: Tempo de desvio para entregar a order, quanto tempo vão demorar a mais se não ficarem com aquela order(recalcular percurso, mas com orders que devem ser incluidas), capacidade disponivel do drone, etc...
 7. Caso um drone perca a negociação, é preciso voltar a pedir aos centros as orders disponíveis, recalcular o percurso, mas agora devem ser incluídas as orders aceites anteriormente.
 8. Tendo os Drones todas as orders aceites, "entregam" as orders e repete-se a execução.
-9. A execução termina quando todos os drones não tiverem mais orders para entregarUm drone termina a sua execução quando nao tiver mais orders para entregar. A execu
+9. A execução termina quando todos os drones não tiverem mais orders para entregarUm drone termina a sua execução quando nao tiver mais orders para entregar.
