@@ -10,6 +10,7 @@ class Center(Agent):
     def __init__(self, jid, password, id, pos=(),orders=None):
         super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
         self.id = id
+        self.hostname = jid.split('@')[-1]
         self.pos = pos # (latitude, longitude)
         self.orders = orders if orders is not None else []
         return
@@ -50,10 +51,10 @@ class Center(Agent):
             serialized_orders = [self.serialize_order(order) for order in orders]
 
             for drone_id in self.agent.drone_ids:
-                msg = Message(to=f"{drone_id}@hplaptop")
+                msg = Message(to=f"{drone_id}@{self.agent.hostname}")
                 msg.set_metadata("performative", "inform")
                 msg.body = json.dumps({
-                    "message": f"DATA from {self.agent.id}",
+                    "center_id": self.agent.id,
                     "orders": serialized_orders
                 })
 
