@@ -2,6 +2,7 @@ import asyncio
 import time
 import utils
 import spade
+from utils import haversine
 from spade.agent import Agent
 from spade.behaviour import OneShotBehaviour
 from spade.message import Message
@@ -15,7 +16,7 @@ class Drone(Agent):
     velocity = None # m/s
     initial_pos = None
 
-    def __init__(self, jid, password, id, capacity=0, autonomy=0,velocity=0, initial_pos=None,center_orders=None):
+    def __init__(self, jid, password, id, capacity=0, autonomy=0,velocity=0, initial_pos=None,orders=None):
         super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
         self.id = id
         self.hostname = jid.split('@')[-1]
@@ -35,7 +36,7 @@ class Drone(Agent):
         # {center1: center_obj, center2: center_obj}
         self.centerAgents = {}
         # {center1: center1_orders, center2: center2_orders}
-        self.center_orders = center_orders if center_orders is not None else {}
+        self.orders = orders if orders is not None else {}
     
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
@@ -45,21 +46,37 @@ class Drone(Agent):
         self.current_loc = orders[-1]["destination"]
         return
     
+    def receive_ack(self, order, ack):
+        
+        if (ack==False):
+            return False
+        if (ack==True):
+            self.current_capacity = self.current_capacity + order.weight
+            self.orders.append(order)
+    
     # Define um percurso de orders otimo para entrega tendo em conta varios fatores
-    def select_orders(self,necessary_orders=[]):
+    def select_orders(self, order):
 
-        if self.center_orders == {}:
-            return []
+        if (order.weight + self.current_capacity > self.capacity):
+            return False
         
-        #TODO
+        distance = 0
+        if (self.capacity != 0):
+            for i in range(len(self.orders) + 1):
+                if (i==0):
+                    distance = haversine(self.current_pos, self.orders[i].destination)
+                elif (i==len(self.orders)):
+                    distance += haversine(self.orders[i-1].destination, order.destination)
+                    distance += haversine(order.destination, self.current_pos)
+                else:
+                    distance += haversine(self.orders[i-1].destination, self.orders[i].destination)
+        else:
+            distance = 2*haversine(self.current_pos, order.destination)
 
-        orders = []
-        orders.append(self.center_orders["center1"][0])
-        orders.append(self.center_orders["center2"][0])
-        
-
-        return orders
-
+        if (distance > self.autonomy):
+            return False
+        else:
+            return True
 
 
 
