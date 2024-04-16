@@ -58,7 +58,7 @@ class Drone(Agent):
     def select_orders(self, order):
 
         if (order.weight + self.current_capacity > self.capacity):
-            return False
+            return -1
         
         distance = 0
         if (self.capacity != 0):
@@ -74,11 +74,9 @@ class Drone(Agent):
             distance = 2*haversine(self.current_pos, order.destination)
 
         if (distance > self.autonomy):
-            return False
+            return -1
         else:
-            return True
-
-
+            return distance/(self.velocity*3.6)
 
     class InformBehav(OneShotBehaviour):
 
