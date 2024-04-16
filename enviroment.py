@@ -14,7 +14,7 @@ DRONE_DATA = os.path.join(os.getcwd(), DATA_DIR, "delivery_drones.csv")
 hostname = "localhost"
 
 
-def build_droneAgents():
+def build_droneAgents(centerAgents):
     droneAgents = {}
     with open(DRONE_DATA, 'r', newline='') as csvfile:
         csvreader = csv.reader(csvfile,delimiter=';')
@@ -24,7 +24,8 @@ def build_droneAgents():
             capacity = int(row[1][:(len(row[1])-2)])
             autonomy = int(row[2][:(len(row[2])-2)])
             velocity = int(row[3][:(len(row[3])-3)])
-            init_pos = row[4]
+
+            init_pos = centerAgents[row[4]].pos
 
             new_drone = Drone(f"{id}@{hostname}", id, id,velocity=velocity,capacity=capacity,autonomy=autonomy,initial_pos=init_pos)
             droneAgents[id] = new_drone
@@ -53,9 +54,10 @@ def build_centerAgents(files):
                 ord_lat = float(row[1].replace(',', '.'))
                 ord_long = float(row[2].replace(',', '.'))
                 ord_weight = int(row[3])
+                ord_center = id
                 ord_dest = (ord_lat,ord_long)
                 
-                order = Order(id=ord_id, destination=ord_dest, weight=ord_weight)
+                order = Order(id=ord_id, center=ord_center, destination=ord_dest, weight=ord_weight)
 
                 new_center.add_order(order)
 
@@ -80,7 +82,7 @@ def build_enviroment():
     centerAgents = build_centerAgents(center_files)
 
     # Build drone agents
-    droneAgents = build_droneAgents()
+    droneAgents = build_droneAgents(centerAgents)
 
     return (centerAgents, droneAgents)
 
@@ -93,14 +95,6 @@ async def main():
 
     print("Starting agents")
 
-    for drone in droneAgents.values():
-        drone.setCenters(centerAgents.keys())
-
-    # Start all drone agents concurrently
-    drone_starts = [droneAgents[drone_id].start(auto_register=True) for drone_id in droneAgents]
-    await asyncio.gather(*drone_starts)
-    droneAgents[list(droneAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10000")
-
     for center in centerAgents.values():
         center.setDrones(droneAgents.keys())
 
@@ -108,6 +102,15 @@ async def main():
     center_starts = [centerAgents[center_id].start(auto_register=True) for center_id in centerAgents]
     await asyncio.gather(*center_starts)
     centerAgents[list(centerAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10001")
+
+
+    for drone in droneAgents.values():
+        drone.setCenters(centerAgents)
+
+    # Start all drone agents concurrently
+    drone_starts = [droneAgents[drone_id].start(auto_register=True) for drone_id in droneAgents]
+    await asyncio.gather(*drone_starts)
+    droneAgents[list(droneAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10000")
 
 
     await spade.wait_until_finished(drone)

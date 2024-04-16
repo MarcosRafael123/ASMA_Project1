@@ -19,7 +19,6 @@ drone4 drone4
     - Criar várias heuristicas/metodos para serem testados e avaliados.
     - Exemplo de percurso: center1 - order1_3 - order1_4 - center2 - order2_7 - order1_2 - center3
 
-
 - Protocolo em caso de negociação (para casos em que mais que um drone está interessado numa mesma order) (se os mesmos drones estao interessados nas mesmas duas (ou mais) orders -> começa-se por negociar a order com menor ID -> Indicar ao centro que quer começar negociação) (se um drone sofrer timeout perde a negociação)
 
 - Avaliação da eficiencia do sistema de entrega -> Cada drone possuirá no fim da execução uma lista completa do percurso que realizou.
@@ -39,7 +38,7 @@ Drones e centros são iniciados
  2. Centros enviam as suas orders para os drones que as pediram
  3. Drones escolhem as orders que pretendem entregar (de uma só vez, antes de voltar a um centro) (Definem um percurso inicial) -> Heuristica
  4. Enviam para os centros as orders que estão interessados.
- 5. Centros esperam um certo tempo por mais interessados. Depois enviam para cada interessado as orders que lhe foram atribuídas e as orders que outros drones também querem (negotiation needed).
+ 5. Centros esperam um certo tempo por mais interessados. Depois enviam para cada interessado as orders que lhe foram atribuídas e as orders que outros drones também querem (negotiation needed). Centros podem recusar orders a um drone caso, já tenham sido atribuidas.
  6. Em caso de Negotiation (1 offer sealed bid auction):
     1. Cada drone envia para o center a sua proposta.
     2. Centro recebe as propostas, escolhe a melhor e envia decisão para os drones participantes.
