@@ -135,7 +135,6 @@ class Drone(Agent):
 
             interesting_orders = self.agent.select_orders()
 
-            print("interresting:",interesting_orders)
             for order in interesting_orders:
 
                 center = self.agent.centerAgents[order["center"]]
@@ -153,29 +152,8 @@ class Drone(Agent):
                 else:
                     print(f"{self.agent.id}: Timeout waiting for request response")
 
-                async def select_center_orders(self):
-            print(f"{self.agent.id}: Selecting orders for {self.agent.id}")
-
-
-            interesting_orders = self.agent.select_orders()
-
-            print("interresting:",interesting_orders)
-            for order in interesting_orders:
-
-                center = self.agent.centerAgents[order["center"]]
-
-                print("center:", center)
-
-                msg = Message(to=f"{center.id}@{center.hostname}")
-                msg.sender = str(self.agent.jid)
-                msg.set_metadata("performative", "request")
-                msg.body = f"select_order : {order['order_id']} {time.time()}"
-                await self.send(msg)
-                response = await self.receive(60)  # Wait for a response
-                if response:
-                    print(f"{self.agent.id}: Received response to request from {center.id}: {response.body}")
-                else:
-                    print(f"{self.agent.id}: Timeout waiting for request response")
+        async def confirm_center_orders(self):
+            return
 
         async def run(self):
             await self.request_center_orders()
