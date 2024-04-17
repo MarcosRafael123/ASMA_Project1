@@ -2,6 +2,7 @@ import asyncio
 import time
 import utils
 import spade
+import random
 from spade.agent import Agent
 from spade.behaviour import OneShotBehaviour
 from spade.message import Message
@@ -61,8 +62,52 @@ class Drone(Agent):
         return orders
 
 
+    def receive_ack(self, order, ack):
+
+        if (ack==False):
+            return False
+        if (ack==True):
+            self.current_capacity = self.current_capacity + order.weight
+            self.orders.append(order)
+
+    def accept_order(self,order):
+
+        # If order accept -> return time_neeeded
+        # If order refuse -> return -1
+
+        if random.randint(1, 10) < 4:
+            return -1
+
+        return -1
 
 
+    def process_proposals(self,proposals):
+
+        # # Extract the proposal strings from the tuple
+        # proposal_values = [proposal[2] for proposal in proposals]
+
+        # Separate proposals into accepted and rejected
+        accept_proposals = [proposal for proposal in proposals if proposal[2] != -1]
+        res_proposals = [proposal for proposal in proposals if proposal not in accept_proposals]
+
+        # If only one proposal is accepted, return all proposals
+        if len(accept_proposals) <= 1:
+            return proposals
+
+        # Find the best accepted proposal
+        best_proposal = min(accept_proposals, key=lambda x: float(x[2]))
+
+        # Generate new proposals for rejected ones
+        new_proposals = [(proposal[0],proposal[1],-1) for proposal in accept_proposals if proposal != best_proposal]
+
+        new_proposals.append(best_proposal)
+
+        # Append new proposals to rejected proposals
+        res_proposals += new_proposals
+
+        # Return the updated tuple with new proposals
+        return [(proposal[0], proposal[1], proposal[2]) for proposal in res_proposals]
+    
     class InformBehav(OneShotBehaviour):
 
         async def run(self):
@@ -156,44 +201,16 @@ class Drone(Agent):
             return
 
         async def run(self):
-            await self.request_center_orders()
+            # await self.request_center_orders()
             # print(len(self.agent.center_orders))
-            await self.select_center_orders()
+            # await self.select_center_orders()
 
             # await self.confirm_center_orders()
 
             # stop agent from behaviour
             # await self.agent.stop()
+            return
 
-    # class SelectOrdersBehav(OneShotBehaviour):
-        
-    #     async def run(self):
-    #         print(f"{self.agent.id}: Selecting orders for {self.agent.id}")
-
-    #         interesting_orders = []
-    #         while self.agent.center_orders is None:
-    #             interesting_orders = self.agent.select_orders()
-
-    #         print("interresting:",interesting_orders)
-    #         for order in interesting_orders:
-                
-    #             center = self.agent.center_orders[order["center"]]
-
-    #             print("center:", center)
-
-    #             msg = Message(to=f"{center.id}@{center.hostname}")
-    #             msg.sender = str(self.agent.jid)
-    #             msg.set_metadata("performative", "request")
-    #             msg.body = f"select_order : {order['order_id']} {time.time()}"
-    #             await self.send(msg)
-    #             response = await self.receive(60)  # Wait for a response
-    #             if response:
-    #                 print(f"{self.agent.id}: Received response to request from {center.id}: {response.body}")
-    #             else:
-    #                 print(f"{self.agent.id}: Timeout waiting for request response")
-
-    #         # stop agent from behaviour
-    #         # await self.agent.stop()
 
     class LongBehav(OneShotBehaviour):
         async def run(self):
@@ -208,20 +225,112 @@ class Drone(Agent):
             await self.agent.stop()
 
 
+    class RecvOrdersBehav(OneShotBehaviour):
+
+        async def recv_msgs(self):
+            msgs = []
+            for center in self.agent.centerAgents.keys():
+                msg = None
+                while msg is None:
+                    msg = await self.receive(60)  # Wait for a message
+                    if not msg is None:
+                        break
+                msgs.append(msg)
+            return msgs
+        
+        async def send_proposal(self, center_proposer, order_offer_center, drone_proposal):
+
+            msg = Message(to=f"{str(center_proposer )}")
+            msg.sender = str(self.agent.jid)
+            msg.set_metadata("performative", "order_offer")
+
+            if drone_proposal == -1:
+                msg.body = f"Deny Offer {order_offer_center}"
+            else:
+                msg.body = f"Accept Offer {order_offer_center} Time_Needed: {drone_proposal}"
+            await self.send(msg)
+
+            return
+        
+        async def run(self):
+
+            msgs = await self.recv_msgs()
+
+            # Process received offers from centers and create proposals
+            proposals = []
+            for msg in msgs:
+                # Process received message containing offer
+                order = json.loads(msg.body)
+                center_proposer = msg.sender
+                order_offer_center = json.loads(msg.body)["order_id"]
+                print(f"{self.agent.id}: received offer {order}")
+
+                # Evaluate received offer and create proposal
+                drone_proposal = self.agent.accept_order(order)
+                # await self.send_proposal(center_proposer,order_offer_center, drone_proposal)
+                proposals.append((center_proposer,order_offer_center,drone_proposal))
+            
+            
+            # Clear possible conflicts with proposals (drone cannot accept the two orders)
+            proposals = self.agent.process_proposals(proposals)
+
+            # Send proposals to centers
+            for proposal in proposals:
+                await self.send_proposal(proposal[0], proposal[1], proposal[2])
+
+            # Receive confirmations of sent proposals from centers
+            msgs = await self.recv_msgs()
+
+            # Receive and process confirmation
+            for msg in msgs:
+                print(f"{self.agent.id} : {msg.body }")
+
+
+            await asyncio.sleep(100)
+            # Stop agent from behavior
+            # await self.agent.stop()
+
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
+
+
     async def setup(self):
         print(f"{self.id}: agent started")
-        b = self.RecvOrdersMultipleBehav()
-        requestOrders = self.RequestOrdersBehav()
+        # b = self.RecvOrdersMultipleBehav()
+        # requestOrders = self.RequestOrdersBehav()
         # selectOrders = self.SelectOrdersBehav()
-        self.L = self.LongBehav()
-        W = self.WaitingBehav()
+        # self.L = self.LongBehav()
+        # W = self.WaitingBehav()
+
+
+        recvOrder = self.RecvOrdersBehav()
+        self.add_behaviour(recvOrder)
 
 
         # print(self.presence.state)  # Gets your current PresenceState instance.
 
         # print(self.presence.is_available())  # Returns a boolean to report wether the agent is available or not
 
-        self.add_behaviour(requestOrders)
+        # self.add_behaviour(requestOrders)
         # await requestAvailOrders.join()
         # self.add_behaviour(selectOrders)
         # template = Template()

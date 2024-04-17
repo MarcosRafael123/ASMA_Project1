@@ -8,6 +8,7 @@ import json
 
 
 SELECTION_TIME = 10
+NUM_RETRIES_OFFER = 3
 
 class Center(Agent):
     def __init__(self, jid, password, id, pos=(),orders=None):
@@ -39,30 +40,20 @@ class Center(Agent):
         self.orders.append(order)
         self.interestOrders[order.id] = []
         return
-    
-    class SendOrdersBehav(OneShotBehaviour):
 
-        async def run(self):
-            print(f"Sending Orders from {self.agent.id}")
-            orders = self.agent.get_orders()  # Get orders from the center
-            
-            serialized_orders = [order.to_dict() for order in orders]
 
-            for drone_id in self.agent.drone_ids:
-                msg = Message(to=f"{drone_id}@{self.agent.hostname}")
-                msg.sender = self.agent.id
-                msg.set_metadata("performative", "inform")
-                msg.body = json.dumps({
-                    "center_id": self.agent.id,
-                    "orders": serialized_orders
-                })
+    # return null if there are no accept proposals
+    def select_proposal(self, proposals):
+        # Filter proposals where the first word is not "Accept"
+        filtered_proposals = {proposal: value for proposal, value in proposals.items() if value.split()[0] == "Accept"}
 
-                await self.send(msg)
-            print("Messages sent!")
+        if not filtered_proposals:
+            return None
 
-            # stop agent from behaviour
-            await self.agent.stop()
+        # Extract proposal values and find the minimum
+        min_proposal = min(filtered_proposals.items(), key=lambda x: float(x[1].split()[4]))
 
+        return min_proposal
 
     class HandleRequestsBehav(OneShotBehaviour):
 
@@ -137,12 +128,86 @@ class Center(Agent):
             # stop agent from behaviour
             # await self.agent.stop()
 
+    class SendOrdersBehav(OneShotBehaviour):
+
+        async def recv_msg(self):
+            msg = None
+            while msg is None:
+                msg = await self.receive(60)  # Wait for a message
+                if not msg is None:
+                    break
+            return msg
+
+        async def send_order_offer(self, order):
+            serialized_order = order.to_dict()
+            for drone_id in self.agent.drone_ids:
+                msg = Message(to=f"{drone_id}@{self.agent.hostname}")
+                msg.sender = str(self.agent.jid)
+                msg.set_metadata("performative", "order")
+                msg.body = json.dumps(serialized_order)
+                await self.send(msg)
+            print("Messages sent!")
+
+        async def recv_order_proposals(self):
+            proposals = {}
+            for drone_id in self.agent.drone_ids:
+                msg = await self.recv_msg()
+                proposals[str(msg.sender)[:str(msg.sender).find("@")]] = msg.body
+            print(f"{self.agent.id}: Proposals received!")
+            return proposals
+        
+        async def send_decision(self, decision,order):
+            for drone_id in self.agent.drone_ids:
+
+                msg = Message(to=f"{drone_id}@{self.agent.hostname}")
+                msg.sender = str(self.agent.jid)
+                msg.set_metadata("performative", "decision")
+
+                if decision != None and decision[0] == drone_id:
+                    msg.body = "Accept proposal"
+                else:
+                    msg.body = "Deny proposal"
+
+                msg.body += " " + order.id
+
+                await self.send(msg)
+                
+            return 
+
+        async def run(self):
+            print(f"Sending Orders from {self.agent.id}")
+            
+            for order in self.agent.orders:
+
+                for retry in range(NUM_RETRIES_OFFER):
+                    await self.send_order_offer(order)
+                    proposals = await self.recv_order_proposals()
+                    decision = self.agent.select_proposal(proposals)
+                    print(f"{self.agent.id}: Decision:", decision)
+                
+                    print(f"{self.agent.id} proposals: {proposals}")
+
+                    print(f"{self.agent.id} Sending Decisions")
+                    await self.send_decision(decision,order)
+
+                    await asyncio.sleep(5)
+
+                    if decision != None:
+                        break
+                
+                break
+            
+            await asyncio.sleep(100)
+
+            # stop agent from behaviour
+            # await self.agent.stop()
+
     async def setup(self):
         print(f"{self.id}: agent started")
 
-        handleRequestsBehav = self.HandleRequestsBehav()
-        self.add_behaviour(handleRequestsBehav)
+        # handleRequestsBehav = self.HandleRequestsBehav()
+        # self.add_behaviour(handleRequestsBehav)
 
         b = self.SendOrdersBehav()
-        # self.add_behaviour(b)
+        self.add_behaviour(b)
         

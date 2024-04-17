@@ -95,15 +95,6 @@ async def main():
 
     print("Starting agents")
 
-    for center in centerAgents.values():
-        center.setDrones(droneAgents.keys())
-
-    # Start all center agents concurrently
-    center_starts = [centerAgents[center_id].start(auto_register=True) for center_id in centerAgents]
-    await asyncio.gather(*center_starts)
-    centerAgents[list(centerAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10001")
-
-
     for drone in droneAgents.values():
         drone.setCenters(centerAgents)
 
@@ -111,6 +102,14 @@ async def main():
     drone_starts = [droneAgents[drone_id].start(auto_register=True) for drone_id in droneAgents]
     await asyncio.gather(*drone_starts)
     droneAgents[list(droneAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10000")
+
+    for center in centerAgents.values():
+        center.setDrones(droneAgents.keys())
+
+    # Start all center agents concurrently
+    center_starts = [centerAgents[center_id].start(auto_register=True) for center_id in centerAgents]
+    await asyncio.gather(*center_starts)
+    centerAgents[list(centerAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10001")
 
 
     await spade.wait_until_finished(drone)
