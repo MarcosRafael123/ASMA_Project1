@@ -47,3 +47,13 @@ Drones e centros são iniciados
 7. Caso um drone perca a negociação, é preciso voltar a pedir aos centros as orders disponíveis, recalcular o percurso, mas agora devem ser incluídas as orders aceites anteriormente.
 8. Tendo os Drones todas as orders aceites, "entregam" as orders e repete-se a execução.
 9. A execução termina quando todos os drones não tiverem mais orders para entregarUm drone termina a sua execução quando nao tiver mais orders para entregar.
+
+
+
+
+
+flow:
+
+center manda "order_offer" para todos os drones
+drone manda "order_proposal" para os centros que lhe mandaram propostas
+center manda "decision" para os drones

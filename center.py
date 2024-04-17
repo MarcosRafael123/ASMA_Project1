@@ -130,11 +130,11 @@ class Center(Agent):
 
     class SendOrdersBehav(OneShotBehaviour):
 
-        async def recv_msg(self):
+        async def recv_msg(self,template):
             msg = None
             while msg is None:
                 msg = await self.receive(60)  # Wait for a message
-                if not msg is None:
+                if not msg is None and template.match(msg):
                     break
             return msg
 
@@ -146,14 +146,18 @@ class Center(Agent):
                 msg.set_metadata("performative", "order")
                 msg.body = json.dumps(serialized_order)
                 await self.send(msg)
-            print("Messages sent!")
+            print(f"{self.agent.id}: Order offer sent! ({order.id})")
 
         async def recv_order_proposals(self):
+
+            template_orderProposal = Template()
+            template_orderProposal.metadata = {"performative": "order_proposal"}
+        
             proposals = {}
             for drone_id in self.agent.drone_ids:
-                msg = await self.recv_msg()
+                msg = await self.recv_msg(template_orderProposal)
                 proposals[str(msg.sender)[:str(msg.sender).find("@")]] = msg.body
-            print(f"{self.agent.id}: Proposals received!")
+            # print(f"{self.agent.id}: Proposals received!")
             return proposals
         
         async def send_decision(self, decision,order):
@@ -175,19 +179,18 @@ class Center(Agent):
             return 
 
         async def run(self):
-            print(f"Sending Orders from {self.agent.id}")
             
             for order in self.agent.orders:
-
+                print("------------------------")
                 for retry in range(NUM_RETRIES_OFFER):
                     await self.send_order_offer(order)
                     proposals = await self.recv_order_proposals()
                     decision = self.agent.select_proposal(proposals)
                     print(f"{self.agent.id}: Decision:", decision)
                 
-                    print(f"{self.agent.id} proposals: {proposals}")
+                    # print(f"{self.agent.id} proposals: {proposals}")
 
-                    print(f"{self.agent.id} Sending Decisions")
+                    # print(f"{self.agent.id} Sending Decisions")
                     await self.send_decision(decision,order)
 
                     await asyncio.sleep(5)
@@ -195,7 +198,8 @@ class Center(Agent):
                     if decision != None:
                         break
                 
-                break
+
+                # break
             
             await asyncio.sleep(100)
 

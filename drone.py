@@ -64,14 +64,13 @@ class Drone(Agent):
 
         if (order["weight"] + self.current_capacity > self.capacity):
             return -1
-        
 
         distance = 0
 
         # Distance to fetch the order from the center
         distance += haversine(self.current_pos, self.centerAgents[center].pos)
 
-        print(f"{self.id}: distance to fetch order: {distance}")
+        # print(f"{self.id}: distance to fetch order: {distance}")
 
         if (self.current_capacity != 0):
             for i in range(len(self.orders) + 1):
@@ -83,10 +82,10 @@ class Drone(Agent):
                 else:
                     distance += haversine(self.orders[i-1]["destination"], self.orders[i]["destination"])
         else:
-            distance = 2*haversine(self.current_pos, order["destination"])
+            distance += 2*haversine(self.centerAgents[center].pos, order["destination"])
 
         if (distance > self.current_autonomy):
-            return -1
+            return -1.0
         else:
             return distance/(self.velocity*3.6)
         
@@ -248,13 +247,13 @@ class Drone(Agent):
 
     class RecvOrdersBehav(OneShotBehaviour):
 
-        async def recv_msgs(self):
+        async def recv_msgs(self, template):
             msgs = []
             for center in self.agent.centerAgents.keys():
                 msg = None
                 while msg is None:
                     msg = await self.receive(60)  # Wait for a message
-                    if not msg is None:
+                    if not msg is None and template.match(msg):
                         break
                 msgs.append(msg)
             return msgs
@@ -263,7 +262,7 @@ class Drone(Agent):
 
             msg = Message(to=f"{str(center_proposer )}")
             msg.sender = str(self.agent.jid)
-            msg.set_metadata("performative", "order_offer")
+            msg.set_metadata("performative", "order_proposal")
 
             if drone_proposal == -1:
                 msg.body = f"Deny Offer {order_offer_center}"
@@ -275,37 +274,50 @@ class Drone(Agent):
         
         async def run(self):
 
-            msgs = await self.recv_msgs()
+            template_orderOffer = Template()
+            template_orderOffer.metadata = {"performative": "order"}
 
-            # Process received offers from centers and create proposals
-            proposals = []
-            for msg in msgs:
-                # Process received message containing offer
-                order = json.loads(msg.body)
-                center_proposer = msg.sender
-                order_offer_center = json.loads(msg.body)["order_id"]
-                print(f"{self.agent.id}: received offer {order}")
-
-                # Evaluate received offer and create proposal
-                drone_proposal = self.agent.accept_order(order,center_proposer.localpart)
-                print(f"{self.agent.id}: drone proposal {drone_proposal}")
-                # await self.send_proposal(center_proposer,order_offer_center, drone_proposal)
-                proposals.append((center_proposer,order_offer_center,drone_proposal))
+            template_decision = Template()
+            template_decision.metadata = {"performative": "decision"}
             
-            
-            # Clear possible conflicts with proposals (drone cannot accept the two orders)
-            proposals = self.agent.process_proposals(proposals)
+            # num = 0
+            while True:
+                # print(f"{self.agent.id}: Iteration {num}")
+                # num += 1
+                # Receive order offers
+                msgs = await self.recv_msgs(template_orderOffer)
 
-            # Send proposals to centers
-            for proposal in proposals:
-                await self.send_proposal(proposal[0], proposal[1], proposal[2])
+                # Process received offers from centers and create proposals
+                proposals = []
+                for msg in msgs:
+                    # Process received message containing offer
+                    order = json.loads(msg.body)
+                    center_proposer = msg.sender
+                    order_offer_center = json.loads(msg.body)["order_id"]
+                    # print(f"{self.agent.id}: received offer {order}")
 
-            # Receive confirmations of sent proposals from centers
-            msgs = await self.recv_msgs()
+                    # Evaluate received offer and create proposal
+                    drone_proposal = self.agent.accept_order(order,center_proposer.localpart)
+                    # print(f"{self.agent.id}: drone proposal {drone_proposal}")
+                    # await self.send_proposal(center_proposer,order_offer_center, drone_proposal)
+                    proposals.append((center_proposer,order_offer_center,drone_proposal))
+                
+                
+                print(f"{self.agent.id}: proposals {proposals}")
+                # Clear possible conflicts with proposals (drone cannot accept the two orders)
+                proposals = self.agent.process_proposals(proposals)
+                print(f"{self.agent.id}: clean proposals {proposals}")
 
-            # Receive and process confirmation
-            for msg in msgs:
-                print(f"{self.agent.id} : {msg.body }")
+                # Send proposals to centers
+                for proposal in proposals:
+                    await self.send_proposal(proposal[0], proposal[1], proposal[2])
+
+                # Receive confirmations of sent proposals from centers
+                msgs = await self.recv_msgs(template_decision)
+
+                # Receive and process confirmation
+                for msg in msgs:
+                    print(f"{self.agent.id} : {msg.body }")
 
 
             await asyncio.sleep(100)
