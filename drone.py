@@ -247,15 +247,19 @@ class Drone(Agent):
 
     class RecvOrdersBehav(OneShotBehaviour):
 
-        async def recv_msgs(self, template):
+        async def recv_msgs(self, template, end_template=None):
             msgs = []
-            for center in self.agent.centerAgents.keys():
+            for center in range(self.agent.numActiveCenterAgents):
                 msg = None
                 while msg is None:
                     msg = await self.receive(60)  # Wait for a message
-                    if not msg is None and template.match(msg):
+                    if msg:
+                        if template.match(msg):
+                            msgs.append(msg)
+                        if end_template and end_template.match(msg):
+                            self.agent.numActiveCenterAgents -=1
                         break
-                msgs.append(msg)
+
             return msgs
         
         async def send_proposal(self, center_proposer, order_offer_center, drone_proposal):
@@ -274,18 +278,24 @@ class Drone(Agent):
         
         async def run(self):
 
+            template_centerFinished = Template()
+            template_centerFinished.metadata = {"performative": "end"}
+
             template_orderOffer = Template()
             template_orderOffer.metadata = {"performative": "order"}
 
             template_decision = Template()
             template_decision.metadata = {"performative": "decision"}
+
+            self.agent.numActiveCenterAgents = len(self.agent.centerAgents)
             
-            # num = 0
             while True:
-                # print(f"{self.agent.id}: Iteration {num}")
-                # num += 1
                 # Receive order offers
-                msgs = await self.recv_msgs(template_orderOffer)
+                msgs = await self.recv_msgs(template_orderOffer,end_template=template_centerFinished)
+                
+                # If all centers ended ended execution -> end drone execution
+                if len(msgs)==0:
+                    break
 
                 # Process received offers from centers and create proposals
                 proposals = []
@@ -306,7 +316,6 @@ class Drone(Agent):
                 print(f"{self.agent.id}: proposals {proposals}")
                 # Clear possible conflicts with proposals (drone cannot accept the two orders)
                 proposals = self.agent.process_proposals(proposals)
-                print(f"{self.agent.id}: clean proposals {proposals}")
 
                 # Send proposals to centers
                 for proposal in proposals:
@@ -323,29 +332,6 @@ class Drone(Agent):
             await asyncio.sleep(100)
             # Stop agent from behavior
             # await self.agent.stop()
-
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-# USE TEMPLATES/ASSERT OR PROBLEMS WILL OCCUR
-
 
     async def setup(self):
         print(f"{self.id}: agent started")

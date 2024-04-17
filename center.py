@@ -177,12 +177,29 @@ class Center(Agent):
                 await self.send(msg)
                 
             return 
+        
+        async def send_end_msg(self):
+            print(f"{self.agent.id}:  Sending End Msg")
+            for drone_id in self.agent.drone_ids:
+
+                msg = Message(to=f"{drone_id}@{self.agent.hostname}")
+                msg.sender = str(self.agent.jid)
+                msg.set_metadata("performative", "end")
+                msg.body = f"{self.agent.id} has finished execution"
+                await self.send(msg)
+            return
 
         async def run(self):
+
+            orders = self.agent.orders
             
-            for order in self.agent.orders:
+            for order in orders:
                 print("------------------------")
-                for retry in range(NUM_RETRIES_OFFER):
+
+                decision = None
+
+                # for retry in range(NUM_RETRIES_OFFER):
+                while decision is None:
                     await self.send_order_offer(order)
                     proposals = await self.recv_order_proposals()
                     decision = self.agent.select_proposal(proposals)
@@ -193,13 +210,10 @@ class Center(Agent):
                     # print(f"{self.agent.id} Sending Decisions")
                     await self.send_decision(decision,order)
 
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(1)
 
-                    if decision != None:
-                        break
-                
-
-                # break
+            await self.send_end_msg()
+            
             
             await asyncio.sleep(100)
 
