@@ -3,6 +3,7 @@ import time
 import utils
 import spade
 import random
+from utils import haversine
 from spade.agent import Agent
 from spade.behaviour import OneShotBehaviour
 from spade.message import Message
@@ -16,13 +17,13 @@ class Drone(Agent):
     velocity = None # m/s
     initial_pos = None
 
-    def __init__(self, jid, password, id, capacity=0, autonomy=0,velocity=0, initial_pos=None,center_orders=None):
+    def __init__(self, jid, password, id, capacity=0, autonomy=0,velocity=0, initial_pos=None,orders=None):
         super().__init__(jid, password) # Assuming Agent is a parent class and needs initialization
         self.id = id
         self.hostname = jid.split('@')[-1]
 
         self.capacity = capacity
-        self.current_capacity = capacity
+        self.current_capacity = 0
 
         self.autonomy = autonomy
         self.current_autonomy = autonomy
@@ -36,49 +37,69 @@ class Drone(Agent):
         # {center1: center_obj, center2: center_obj}
         self.centerAgents = {}
         # {center1: center1_orders, center2: center2_orders}
-        self.center_orders = center_orders if center_orders is not None else {}
+        self.orders = orders if orders is not None else {}
     
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
         return
 
     def deliverOrders(self, orders):
+        # Update weight, capacity and autonomy
         self.current_loc = orders[-1]["destination"]
         return
     
-    # Define um percurso de orders otimo para entrega tendo em conta varios fatores
-    def select_orders(self,necessary_orders=[]):
-
-        if self.center_orders == {}:
-            return []
-        
-        #TODO
-
-        orders = []
-        orders.append(self.center_orders["center1"][0])
-        orders.append(self.center_orders["center2"][0])
-        
-
-        return orders
-
-
     def receive_ack(self, order, ack):
-
+        
         if (ack==False):
             return False
         if (ack==True):
             self.current_capacity = self.current_capacity + order.weight
             self.orders.append(order)
+        return
+    
+    # Receives an order and defines a proposal for IT
+    # If accept -> returns time_needed_to_deliver
+    # If refuse -> returns -1
+    def accept_order(self, order, center):
 
-    def accept_order(self,order):
-
-        # If order accept -> return time_neeeded
-        # If order refuse -> return -1
-
-        if random.randint(1, 10) < 4:
+        if (order["weight"] + self.current_capacity > self.capacity):
             return -1
+        
 
-        return -1
+        distance = 0
+
+        # Distance to fetch the order from the center
+        distance += haversine(self.current_pos, self.centerAgents[center].pos)
+
+        print(f"{self.id}: distance to fetch order: {distance}")
+
+        if (self.current_capacity != 0):
+            for i in range(len(self.orders) + 1):
+                if (i==0):
+                    distance = haversine(self.current_pos, self.orders[i]["destination"])
+                elif (i==len(self.orders)):
+                    distance += haversine(self.orders[i-1]["destination"], order["destination"])
+                    distance += haversine(order["destination"], self.current_pos)
+                else:
+                    distance += haversine(self.orders[i-1]["destination"], self.orders[i]["destination"])
+        else:
+            distance = 2*haversine(self.current_pos, order["destination"])
+
+        if (distance > self.current_autonomy):
+            return -1
+        else:
+            return distance/(self.velocity*3.6)
+        
+
+    # def accept_order(self,order):
+
+    #     # If order accept -> return time_neeeded
+    #     # If order refuse -> return -1
+
+    #     if random.randint(1, 10) < 4:
+    #         return -1
+
+    #     return -1
 
 
     def process_proposals(self,proposals):
@@ -266,7 +287,8 @@ class Drone(Agent):
                 print(f"{self.agent.id}: received offer {order}")
 
                 # Evaluate received offer and create proposal
-                drone_proposal = self.agent.accept_order(order)
+                drone_proposal = self.agent.accept_order(order,center_proposer.localpart)
+                print(f"{self.agent.id}: drone proposal {drone_proposal}")
                 # await self.send_proposal(center_proposer,order_offer_center, drone_proposal)
                 proposals.append((center_proposer,order_offer_center,drone_proposal))
             
