@@ -25,7 +25,7 @@ def build_droneAgents(centerAgents):
             autonomy = int(row[2][:(len(row[2])-2)])
             velocity = int(row[3][:(len(row[3])-3)])
 
-            init_pos = centerAgents[row[4]].pos
+            init_pos = centerAgents[row[4]].id
 
             new_drone = Drone(f"{id}@{hostname}", id, id,velocity=velocity,capacity=capacity,autonomy=autonomy,initial_pos=init_pos)
             droneAgents[id] = new_drone

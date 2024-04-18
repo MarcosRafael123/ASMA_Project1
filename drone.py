@@ -2,6 +2,7 @@ import asyncio
 import time
 import utils
 import spade
+import itertools
 import random
 from utils import haversine
 from spade.agent import Agent
@@ -9,6 +10,9 @@ from spade.behaviour import OneShotBehaviour
 from spade.message import Message
 from spade.template import Template
 import json
+
+TIME_FACTOR = 1000
+
 
 class Drone(Agent):
     id = None
@@ -29,32 +33,132 @@ class Drone(Agent):
         self.current_autonomy = autonomy
 
         self.velocity = velocity
-        self.current_velocity = 0
 
         self.initial_pos = initial_pos
         self.current_pos = initial_pos
 
         # {center1: center_obj, center2: center_obj}
         self.centerAgents = {}
-        # {center1: center1_orders, center2: center2_orders}
-        self.orders = orders if orders is not None else {}
+
+        self.orders = orders if orders is not None else []
+        self.path = []
+
+        self.isDelivering = False
+
+        self.record = [initial_pos]
+        self.total_delivery_time = 0
     
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
         return
+    
+    def add_order(self,order):
 
-    def deliverOrders(self, orders):
-        # Update weight, capacity and autonomy
-        self.current_loc = orders[-1]["destination"]
+        self.current_capacity += order["weight"]
+        self.orders.append(order)
         return
     
-    def receive_ack(self, order, ack):
+    def best_path(self, center):
+        # Generate all possible permutations of orders
+        order_permutations = itertools.permutations(self.orders)
+
+        # Initialize variables to track the best route and its distance
+        best_route = None
+        min_distance = float('inf')
+
+        # Iterate through each permutation of orders
+        for order_sequence in order_permutations:
+            # Create a list of locations to visit (start and end at center)
+            if (center == self.initial_pos):
+                locations_to_visit = [self.initial_pos] + list(order_sequence) + [self.initial_pos]
+            elif (center != self.initial_pos):
+                locations_to_visit = [self.initial_pos] + list(order_sequence) + [center]
+
+            # Calculate the total distance of the route
+            total_distance = 0
+            for i in range(len(locations_to_visit) - 1):
+                total_distance += haversine(locations_to_visit[i], locations_to_visit[i + 1])
+
+            # Check if this route is better than the current best
+            if total_distance < min_distance:
+                best_route = locations_to_visit
+                min_distance = total_distance
+
+        return best_route, min_distance/(self.velocity*3.6)
+
+
+    def ready_to_deliver(self):
         
-        if (ack==False):
-            return False
-        if (ack==True):
-            self.current_capacity = self.current_capacity + order.weight
-            self.orders.append(order)
+        cap_cond = self.current_capacity >= self.capacity*0.5
+
+        print(f"{self.id}: IS READY TO DELIVER: {cap_cond}")
+        print(f"{self.id}: CURRENT CAPACITY: {self.current_capacity }")
+
+        return cap_cond
+
+    def calculate_path(self):
+
+        path = []
+
+        if self.record == {}:
+            path.append(self.current_pos)
+        
+        for order in self.orders:
+            path.append(order["order_id"])
+
+        path.append(self.current_pos)
+        
+
+        return path
+
+    async def deliver_orders(self, path):
+
+        self.isDelivering = True
+
+        total_time = 0
+
+        for stop in path:
+
+            isCenter = stop[:6] == "center"
+
+            current_pos = None
+            if self.current_pos[:5] == "order":
+                current_pos = [item for item in self.orders if item["order_id"] == self.current_pos][0]["destination"]
+            else:
+                current_pos = self.centerAgents[self.current_pos].pos
+            
+            
+            if not isCenter:
+                order = [item for item in self.orders if item["order_id"] == stop][0]
+                self.current_capacity -= order["weight"]
+
+                distance = haversine(current_pos,order["destination"])
+                time = (distance)/self.velocity
+
+                await asyncio.sleep(time/TIME_FACTOR)
+                total_time += time
+
+                self.current_autonomy -= distance
+                
+                self.current_pos = stop
+            else:
+                distance = haversine(current_pos,self.centerAgents[stop].pos)
+                time = (distance)/self.velocity
+
+                await asyncio.sleep(time/TIME_FACTOR)
+                total_time += time
+                
+                self.current_autonomy = self.autonomy
+                self.current_pos = stop
+
+
+        print(f"{self.id}: TOTAL TIME NEEDED TO DELIVER: {total_time }")
+        self.total_delivery_time += total_time
+        self.orders = []
+        self.record += path
+
+        self.isDelivering = False
+
         return
     
     # Receives an order and defines a proposal for IT
@@ -62,29 +166,37 @@ class Drone(Agent):
     # If refuse -> returns -1
     def accept_order(self, order, center):
 
-        if (order["weight"] + self.current_capacity > self.capacity):
+
+        print(self.isDelivering)
+        if self.isDelivering:
             return -1
 
+        if (order["weight"] + self.current_capacity > self.capacity):
+            return -1
+        
         distance = 0
 
         # Distance to fetch the order from the center
-        distance += haversine(self.current_pos, self.centerAgents[center].pos)
+        distance += haversine(self.centerAgents[self.current_pos].pos, self.centerAgents[center].pos)
 
         # print(f"{self.id}: distance to fetch order: {distance}")
 
         if (self.current_capacity != 0):
             for i in range(len(self.orders) + 1):
                 if (i==0):
-                    distance = haversine(self.current_pos, self.orders[i]["destination"])
+                    distance = haversine(self.centerAgents[self.current_pos].pos, self.orders[i]["destination"])
                 elif (i==len(self.orders)):
                     distance += haversine(self.orders[i-1]["destination"], order["destination"])
-                    distance += haversine(order["destination"], self.current_pos)
+                    distance += haversine(order["destination"], self.centerAgents[self.current_pos].pos)
                 else:
                     distance += haversine(self.orders[i-1]["destination"], self.orders[i]["destination"])
         else:
             distance += 2*haversine(self.centerAgents[center].pos, order["destination"])
 
-        if (distance > self.current_autonomy):
+
+        print(f"{self.id} : Distance needed to travel: {distance}")
+
+        if (distance > self.current_autonomy*1000):
             return -1.0
         else:
             return distance/(self.velocity*3.6)
@@ -102,9 +214,6 @@ class Drone(Agent):
 
 
     def process_proposals(self,proposals):
-
-        # # Extract the proposal strings from the tuple
-        # proposal_values = [proposal[2] for proposal in proposals]
 
         # Separate proposals into accepted and rejected
         accept_proposals = [proposal for proposal in proposals if proposal[2] != -1]
@@ -127,122 +236,6 @@ class Drone(Agent):
 
         # Return the updated tuple with new proposals
         return [(proposal[0], proposal[1], proposal[2]) for proposal in res_proposals]
-    
-    class InformBehav(OneShotBehaviour):
-
-        async def run(self):
-            
-            print("InformBehav running")
-            msg = Message(to=f"admin@{self.agent.hostname}")     # Instantiate the message
-            msg.set_metadata("performative", "inform")  # Set the "inform" FIPA performative
-
-            # Set the message content            
-            msg.body = "ID=" + str(self.agent.id) + "\n"
-            msg.body = "Velocity=" + str(self.agent.velocity) + "\n"
-            msg.body += "Capacity=" + str(self.agent.capacity) + "\n"
-            msg.body += "Autonomy=" + str(self.agent.autonomy) + "\n"
-            msg.body += "Initial_pos=" + str(self.agent.initial_pos) + "\n"
-            msg.body += "Current_pos=" + str(self.agent.current_pos)
-
-            await self.send(msg)
-            print("Inform sent!")
-            
-    class RecvOrdersMultipleBehav(OneShotBehaviour):
-
-        async def run(self):
-
-            for center in self.agent.centerAgents.keys():
-                msg = await self.receive(60)  # Wait for a message
-                if msg:
-                    msg_body = json.loads(msg.body)
-                    self.agent.center_orders[msg_body["center_id"]] = msg_body["orders"]
-                else:
-                    print("Did not receive any message")
-
-            print("ORDERS FROM THE FIRST CENTER: ", len(self.agent.center_orders["center1"]))
-            print("ORDERS FROM THE SECOND CENTER: ", len(self.agent.center_orders["center2"]))
-            
-            # Stop agent from behavior
-            # await self.agent.stop()
-
-    class RequestOrdersBehav(OneShotBehaviour):
-        
-        # Obtain the center agents that are close to the drone
-        def get_close_centers(self):
-            close_centers = []
-            for center in self.agent.centerAgents.values():
-                if utils.haversine(center.pos, self.agent.current_pos) <= self.agent.current_autonomy:
-                    close_centers.append(center)
-            return close_centers
-        
-        async def request_center_orders(self):
-            print(f"{self.agent.id}: Requesting orders for {self.agent.id}")
-
-            close_centers = self.get_close_centers()
-
-            for center in close_centers:
-                msg = Message(to=f"{center.id}@{center.hostname}")
-                msg.sender = str(self.agent.jid)
-                msg.set_metadata("performative", "request")
-                msg.body = f"get_orders : {time.time()}"
-                await self.send(msg)
-                msg = await self.receive(60)  # Wait for a response
-                if msg:
-                    print(f"{self.agent.id}: Received response to request from {center.id}: {len(msg.body)}")
-                    msg_body = json.loads(msg.body)
-                    self.agent.center_orders[msg_body["center_id"]] = msg_body["orders"]
-                else:
-                    print(f"{self.agent.id}: Timeout waiting for request response")
-
-        async def select_center_orders(self):
-            print(f"{self.agent.id}: Selecting orders for {self.agent.id}")
-
-
-            interesting_orders = self.agent.select_orders()
-
-            for order in interesting_orders:
-
-                center = self.agent.centerAgents[order["center"]]
-
-                print("center:", center)
-
-                msg = Message(to=f"{center.id}@{center.hostname}")
-                msg.sender = str(self.agent.jid)
-                msg.set_metadata("performative", "request")
-                msg.body = f"select_order : {order['order_id']} {time.time()}"
-                await self.send(msg)
-                response = await self.receive(60)  # Wait for a response
-                if response:
-                    print(f"{self.agent.id}: Received response to request from {center.id}: {response.body}")
-                else:
-                    print(f"{self.agent.id}: Timeout waiting for request response")
-
-        async def confirm_center_orders(self):
-            return
-
-        async def run(self):
-            # await self.request_center_orders()
-            # print(len(self.agent.center_orders))
-            # await self.select_center_orders()
-
-            # await self.confirm_center_orders()
-
-            # stop agent from behaviour
-            # await self.agent.stop()
-            return
-
-
-    class LongBehav(OneShotBehaviour):
-        async def run(self):
-            await asyncio.sleep(100)
-            print("Long Behaviour has finished")
-
-    class WaitingBehav(OneShotBehaviour):
-        async def run(self):
-            await self.agent.L.join()  # this join must be awaited
-            print("Waiting Behaviour has finished")
-            # Stop agent from behavior
-            await self.agent.stop()
 
 
     class RecvOrdersBehav(OneShotBehaviour):
@@ -276,6 +269,16 @@ class Drone(Agent):
 
             return
         
+        def process_confirmations(self,msgs,orders):
+            
+            for confirmation in msgs:
+                confirmation = confirmation.body.split()
+                if confirmation[0] == "Accept":
+                    print(f"{self.agent.id}: DRONE ADDNIG ORDER {orders[confirmation[2]]}")
+                    self.agent.add_order(orders[confirmation[2]])
+            
+            return
+
         async def run(self):
 
             template_centerFinished = Template()
@@ -299,17 +302,18 @@ class Drone(Agent):
 
                 # Process received offers from centers and create proposals
                 proposals = []
+                orders = {}
                 for msg in msgs:
                     # Process received message containing offer
                     order = json.loads(msg.body)
                     center_proposer = msg.sender
                     order_offer_center = json.loads(msg.body)["order_id"]
-                    # print(f"{self.agent.id}: received offer {order}")
+
+                    orders[order["order_id"]] = order
 
                     # Evaluate received offer and create proposal
                     drone_proposal = self.agent.accept_order(order,center_proposer.localpart)
-                    # print(f"{self.agent.id}: drone proposal {drone_proposal}")
-                    # await self.send_proposal(center_proposer,order_offer_center, drone_proposal)
+
                     proposals.append((center_proposer,order_offer_center,drone_proposal))
                 
                 
@@ -324,23 +328,27 @@ class Drone(Agent):
                 # Receive confirmations of sent proposals from centers
                 msgs = await self.recv_msgs(template_decision)
 
-                # Receive and process confirmation
-                for msg in msgs:
-                    print(f"{self.agent.id} : {msg.body }")
+                # Process confirmations
+                # for msg in msgs:
+                #     print(f"{self.agent.id} : {msg.body }")
+                self.process_confirmations(msgs,orders)
+                
+                if self.agent.isDelivering==False and self.agent.ready_to_deliver():
+                    path = self.agent.calculate_path()
+                    print(f"{self.agent.id} : Path: {path}")
+                    asyncio.create_task(self.agent.deliver_orders(path))
 
 
+
+            print(f"{self.agent.id} : Record: {self.agent.record}")
+            print(f"{self.agent.id} : Total Delivery Time: {self.agent.total_delivery_time}")
             await asyncio.sleep(100)
+
             # Stop agent from behavior
             # await self.agent.stop()
 
     async def setup(self):
         print(f"{self.id}: agent started")
-        # b = self.RecvOrdersMultipleBehav()
-        # requestOrders = self.RequestOrdersBehav()
-        # selectOrders = self.SelectOrdersBehav()
-        # self.L = self.LongBehav()
-        # W = self.WaitingBehav()
-
 
         recvOrder = self.RecvOrdersBehav()
         self.add_behaviour(recvOrder)
@@ -349,13 +357,3 @@ class Drone(Agent):
         # print(self.presence.state)  # Gets your current PresenceState instance.
 
         # print(self.presence.is_available())  # Returns a boolean to report wether the agent is available or not
-
-        # self.add_behaviour(requestOrders)
-        # await requestAvailOrders.join()
-        # self.add_behaviour(selectOrders)
-        # template = Template()
-        # template.setmes_metadata("performative", "inform")
-        # self.add_behaviour(b, template)
-        # self.add_behaviour(b)
-        # self.add_behaviour(self.L)
-        # self.add_behaviour(W)

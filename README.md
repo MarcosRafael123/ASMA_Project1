@@ -57,3 +57,5 @@ flow:
 center manda "order_offer" para todos os drones
 drone manda "order_proposal" para os centros que lhe mandaram propostas
 center manda "decision" para os drones
+
+quando acabam as orders envia "end"

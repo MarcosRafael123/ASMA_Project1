@@ -11,7 +11,7 @@ def haversine(pos1, pos2):
         pos2: Tuple containing latitude and longitude of point 2 (in degrees)
         
     Returns:
-        Distance between the two points in kilometers.
+        Distance between the two points in meters.
     """
     lat1, lon1 = pos1
     lat2, lon2 = pos2
@@ -32,7 +32,7 @@ def haversine(pos1, pos2):
     
     # Calculate the distance
     distance = R * c
-    return distance
+    return distance*1000
 
 
 def find_files(directory, extension):
