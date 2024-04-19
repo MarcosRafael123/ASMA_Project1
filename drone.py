@@ -46,7 +46,11 @@ class Drone(Agent):
         self.isDelivering = False
 
         self.record = [initial_pos]
+        self.total_delivery_distance = 0
         self.total_delivery_time = 0
+        self.total_weight_carried = 0
+        self.total_delivered_orders = 0
+        self.total_num_trips = 0
     
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
@@ -58,9 +62,26 @@ class Drone(Agent):
         self.orders.append(order)
         return
     
-    def best_path(self, center):
+
+
+    # Start and end at the same center
+    def calculate_path(self, order = None):
+        
+        orders = self.orders.copy()
+
+        if order:
+            orders.append(order)
+
+        order_ids = [item["order_id"] for item in orders]
+
+        if len(order_ids) == 0:
+            return [], -1.0
+
+
         # Generate all possible permutations of orders
-        order_permutations = itertools.permutations(self.orders)
+        order_permutations = itertools.permutations(order_ids)
+
+        # print(f"ITER: {list(order_permutations)}")
 
         # Initialize variables to track the best route and its distance
         best_route = None
@@ -69,47 +90,55 @@ class Drone(Agent):
         # Iterate through each permutation of orders
         for order_sequence in order_permutations:
             # Create a list of locations to visit (start and end at center)
-            if (center == self.initial_pos):
-                locations_to_visit = [self.initial_pos] + list(order_sequence) + [self.initial_pos]
-            elif (center != self.initial_pos):
-                locations_to_visit = [self.initial_pos] + list(order_sequence) + [center]
+            locations_to_visit = [self.current_pos] + list(order_sequence) + [self.current_pos]
 
             # Calculate the total distance of the route
             total_distance = 0
             for i in range(len(locations_to_visit) - 1):
-                total_distance += haversine(locations_to_visit[i], locations_to_visit[i + 1])
+                origin = None
+                destination = None
+                if locations_to_visit[i][:5] == "order":
+                    origin = [item for item in orders if item["order_id"] == locations_to_visit[i]][0]["destination"]
+                else:
+                    origin = self.centerAgents[locations_to_visit[i]].pos
+
+                if locations_to_visit[i+1][:5] == "order":
+                    destination = [item for item in orders if item["order_id"] == locations_to_visit[i+1]][0]["destination"]
+                else:
+                    destination = self.centerAgents[locations_to_visit[i+1]].pos
+                
+                total_distance += haversine(origin, destination)
 
             # Check if this route is better than the current best
             if total_distance < min_distance:
                 best_route = locations_to_visit
                 min_distance = total_distance
 
-        return best_route, min_distance/(self.velocity*3.6)
+
+        return best_route, min_distance
+
+    # def calculate_path1(self):
+
+    #     path = []
+
+    #     if self.record == {}:
+    #         path.append(self.current_pos)
+        
+    #     for order in self.orders:
+    #         path.append(order["order_id"])
+
+    #     path.append(self.current_pos)
+        
+
+    #     return path,None
 
 
     def ready_to_deliver(self):
         
-        cap_cond = self.current_capacity >= self.capacity*0.5
-
-        print(f"{self.id}: IS READY TO DELIVER: {cap_cond}")
-        print(f"{self.id}: CURRENT CAPACITY: {self.current_capacity }")
+        cap_cond = self.current_capacity >= self.capacity*0.75
 
         return cap_cond
 
-    def calculate_path(self):
-
-        path = []
-
-        if self.record == {}:
-            path.append(self.current_pos)
-        
-        for order in self.orders:
-            path.append(order["order_id"])
-
-        path.append(self.current_pos)
-        
-
-        return path
 
     async def deliver_orders(self, path):
 
@@ -136,7 +165,10 @@ class Drone(Agent):
                 time = (distance)/self.velocity
 
                 await asyncio.sleep(time/TIME_FACTOR)
-                total_time += time
+                self.total_delivery_distance += distance
+                self.total_weight_carried += order["weight"]
+                self.total_delivery_time += time
+                self.total_delivered_orders += 1
 
                 self.current_autonomy -= distance
                 
@@ -146,16 +178,16 @@ class Drone(Agent):
                 time = (distance)/self.velocity
 
                 await asyncio.sleep(time/TIME_FACTOR)
-                total_time += time
+                self.total_delivery_distance += distance
+                self.total_delivery_time += time
                 
                 self.current_autonomy = self.autonomy
                 self.current_pos = stop
 
 
-        print(f"{self.id}: TOTAL TIME NEEDED TO DELIVER: {total_time }")
-        self.total_delivery_time += total_time
         self.orders = []
         self.record += path
+        self.total_num_trips += 1
 
         self.isDelivering = False
 
@@ -166,10 +198,8 @@ class Drone(Agent):
     # If refuse -> returns -1
     def accept_order(self, order, center):
 
-
-        print(self.isDelivering)
         if self.isDelivering:
-            return -1
+            return -1.0
 
         if (order["weight"] + self.current_capacity > self.capacity):
             return -1
@@ -184,36 +214,71 @@ class Drone(Agent):
         if (self.current_capacity != 0):
             for i in range(len(self.orders) + 1):
                 if (i==0):
-                    distance = haversine(self.centerAgents[self.current_pos].pos, self.orders[i]["destination"])
+                    distance += haversine(self.centerAgents[center].pos, self.orders[i]["destination"])
                 elif (i==len(self.orders)):
                     distance += haversine(self.orders[i-1]["destination"], order["destination"])
-                    distance += haversine(order["destination"], self.centerAgents[self.current_pos].pos)
+                    distance += haversine(order["destination"], self.centerAgents[center].pos)
                 else:
                     distance += haversine(self.orders[i-1]["destination"], self.orders[i]["destination"])
         else:
             distance += 2*haversine(self.centerAgents[center].pos, order["destination"])
 
 
-        print(f"{self.id} : Distance needed to travel: {distance}")
+        # print(f"{self.id} : Distance needed to travel: {distance}")
 
         if (distance > self.current_autonomy*1000):
             return -1.0
         else:
-            return distance/(self.velocity*3.6)
+            return distance/(self.velocity)
         
 
-    # def accept_order(self,order):
+    # Receives an order and defines a proposal for IT
+    # If accept -> returns time_needed_to_deliver
+    # If refuse -> returns -1
+    def accept_order(self, order, center):
+
+
+        if self.isDelivering:
+            return -1.0
+        
+        if (order["weight"] + self.current_capacity > self.capacity):
+            return -1.0
+        
+        # print(f"{self.id}: Passed init")
+
+        _, dist1 = self.calculate_path(order=order)
+        _, dist2 = self.calculate_path()
+
+        time1 = dist1/self.velocity
+        time2 = dist2/self.velocity
+
+        if (dist1 > self.current_autonomy*1000):
+            return -1.0
+        elif dist2 == -1.0:
+            return time1
+        else:
+            return time1 - time2
+            #return distance/(self.velocity*3.6)
+
+
+    # def accept_order1(self, order, center):
 
     #     # If order accept -> return time_neeeded
     #     # If order refuse -> return -1
 
+    #     if self.isDelivering:
+    #         return -1.0
+
+    #     if (order["weight"] + self.current_capacity > self.capacity):
+    #         return -1
+
     #     if random.randint(1, 10) < 4:
     #         return -1
 
-    #     return -1
+    #     return random.randint(1, 10)
 
 
-    def process_proposals(self,proposals):
+    def clean_proposals(self,proposals):
 
         # Separate proposals into accepted and rejected
         accept_proposals = [proposal for proposal in proposals if proposal[2] != -1]
@@ -274,7 +339,7 @@ class Drone(Agent):
             for confirmation in msgs:
                 confirmation = confirmation.body.split()
                 if confirmation[0] == "Accept":
-                    print(f"{self.agent.id}: DRONE ADDNIG ORDER {orders[confirmation[2]]}")
+                    print(f"{self.agent.id}: DRONE ADDING ORDER {orders[confirmation[2]]}")
                     self.agent.add_order(orders[confirmation[2]])
             
             return
@@ -317,9 +382,17 @@ class Drone(Agent):
                     proposals.append((center_proposer,order_offer_center,drone_proposal))
                 
                 
-                print(f"{self.agent.id}: proposals {proposals}")
+                # print(f"{self.agent.id}: proposals {proposals}")
                 # Clear possible conflicts with proposals (drone cannot accept the two orders)
-                proposals = self.agent.process_proposals(proposals)
+                proposals = self.agent.clean_proposals(proposals)
+
+                for proposal in proposals:
+                    if proposal[2] == -1.0:
+                        print(f"{self.agent.id} : Drone Proposal for {proposal[1]}: Deny")
+                    else:
+                        print(f"{self.agent.id} : Drone Proposal for {proposal[1]}: Accept! time={proposal[2]}")
+                
+                print(f"{self.agent.id}: Current capacity: {self.agent.current_capacity }")
 
                 # Send proposals to centers
                 for proposal in proposals:
@@ -333,15 +406,21 @@ class Drone(Agent):
                 #     print(f"{self.agent.id} : {msg.body }")
                 self.process_confirmations(msgs,orders)
                 
-                if self.agent.isDelivering==False and self.agent.ready_to_deliver():
-                    path = self.agent.calculate_path()
-                    print(f"{self.agent.id} : Path: {path}")
+                if (not self.agent.isDelivering) and self.agent.ready_to_deliver():
+                    path,_ = self.agent.calculate_path()
+                    print(f"{self.agent.id}: With path = {path} Delivering...")
                     asyncio.create_task(self.agent.deliver_orders(path))
 
 
-
+            print(f"{self.agent.id} : ----------STATS-----------")
             print(f"{self.agent.id} : Record: {self.agent.record}")
             print(f"{self.agent.id} : Total Delivery Time: {self.agent.total_delivery_time}")
+            print(f"{self.agent.id}: Total orders delivered: {self.agent.total_delivered_orders }")
+            print(f"{self.agent.id}: Total number of trips: {self.agent.total_num_trips }")
+            print(f"{self.agent.id}: Total weight carried: {self.agent.total_weight_carried }")
+            print(f"{self.agent.id}: Total distance travelled: {self.agent.total_delivery_distance }")
+
+            print(f"{self.agent.id} : --------------------------")
             await asyncio.sleep(100)
 
             # Stop agent from behavior

@@ -146,7 +146,7 @@ class Center(Agent):
                 msg.set_metadata("performative", "order")
                 msg.body = json.dumps(serialized_order)
                 await self.send(msg)
-            print(f"{self.agent.id}: Order offer sent! ({order.id})")
+            print(f"{self.agent.id}: Order offer sent! ({order})")
 
         async def recv_order_proposals(self):
 
