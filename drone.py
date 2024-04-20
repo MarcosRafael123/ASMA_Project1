@@ -367,6 +367,7 @@ class Drone(Agent):
 
             self.agent.numActiveCenterAgents = len(self.agent.centerAgents)
             
+            deliver_task = None
             while True:
                 # Receive order offers
                 msgs = await self.recv_msgs(template_orderOffer,end_template=template_centerFinished)
@@ -419,10 +420,12 @@ class Drone(Agent):
                 if (not self.agent.isDelivering) and self.agent.ready_to_deliver():
                     path,_ = self.agent.calculate_path()
                     print(f"{self.agent.id}: With path = {path} Delivering...")
-                    asyncio.create_task(self.agent.deliver_orders(path))
+                    deliver_task = asyncio.create_task(self.agent.deliver_orders(path))
             
 
             #If there are undelivered drone attributed orders after termination -> deliver them
+            if deliver_task:
+                await deliver_task
             if len(self.agent.orders) > 0:
                 path,_ = self.agent.calculate_path()
                 print(f"{self.agent.id}: With path = {path} Delivering...")
