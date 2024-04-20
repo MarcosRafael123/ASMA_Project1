@@ -62,6 +62,16 @@ class Drone(Agent):
         self.orders.append(order)
         return
     
+    def print_stats(self):
+        print(f"{self.id} : ----------STATS-----------")
+        print(f"{self.id} : Record: {self.record}")
+        print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
+        print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
+        print(f"{self.id}: Total number of trips: {self.total_num_trips }")
+        print(f"{self.id}: Total weight carried: {self.total_weight_carried }")
+        print(f"{self.id}: Total distance travelled: {self.total_delivery_distance }")
+        print(f"{self.id} : --------------------------")
+        return
 
 
     # Start and end at the same center
@@ -410,17 +420,17 @@ class Drone(Agent):
                     path,_ = self.agent.calculate_path()
                     print(f"{self.agent.id}: With path = {path} Delivering...")
                     asyncio.create_task(self.agent.deliver_orders(path))
+            
 
+            #If there are undelivered drone attributed orders after termination -> deliver them
+            if len(self.agent.orders) > 0:
+                path,_ = self.agent.calculate_path()
+                print(f"{self.agent.id}: With path = {path} Delivering...")
+                await self.agent.deliver_orders(path)
 
-            print(f"{self.agent.id} : ----------STATS-----------")
-            print(f"{self.agent.id} : Record: {self.agent.record}")
-            print(f"{self.agent.id} : Total Delivery Time: {self.agent.total_delivery_time}")
-            print(f"{self.agent.id}: Total orders delivered: {self.agent.total_delivered_orders }")
-            print(f"{self.agent.id}: Total number of trips: {self.agent.total_num_trips }")
-            print(f"{self.agent.id}: Total weight carried: {self.agent.total_weight_carried }")
-            print(f"{self.agent.id}: Total distance travelled: {self.agent.total_delivery_distance }")
+            # Print stats
+            self.agent.print_stats()
 
-            print(f"{self.agent.id} : --------------------------")
             await asyncio.sleep(100)
 
             # Stop agent from behavior
