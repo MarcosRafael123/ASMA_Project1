@@ -260,6 +260,30 @@ class Drone(Agent):
         # print(f"{self.id}: Passed init")
 
         _, dist1 = self.calculate_path(order=order)
+
+        time1 = dist1/self.velocity
+
+        if (dist1 > self.current_autonomy*1000):
+            return -1.0
+        else:
+            return time1
+            #return distance/(self.velocity*3.6)
+
+    # Receives an order and defines a proposal for IT
+    # If accept -> returns time_needed_to_deliver
+    # If refuse -> returns -1
+    def accept_order(self, order, center):
+
+
+        if self.isDelivering:
+            return -1.0
+        
+        if (order["weight"] + self.current_capacity > self.capacity):
+            return -1.0
+        
+        # print(f"{self.id}: Passed init")
+
+        _, dist1 = self.calculate_path(order=order)
         _, dist2 = self.calculate_path()
 
         time1 = dist1/self.velocity
