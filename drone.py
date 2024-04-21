@@ -51,6 +51,8 @@ class Drone(Agent):
         self.total_weight_carried = 0
         self.total_delivered_orders = 0
         self.total_num_trips = 0
+        self.start_execution_time = None
+        self.total_execution_time = None
     
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
@@ -66,6 +68,7 @@ class Drone(Agent):
         print(f"{self.id} : ----------STATS-----------")
         print(f"{self.id} : Record: {self.record}")
         print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
+        print(f"{self.id} : Protocol Execution Time: {self.total_execution_time}")
         print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
         print(f"{self.id}: Total number of trips: {self.total_num_trips }")
         print(f"{self.id}: Total weight carried: {self.total_weight_carried }")
@@ -365,6 +368,7 @@ class Drone(Agent):
             template_decision = Template()
             template_decision.metadata = {"performative": "decision"}
 
+            self.agent.start_execution_time = time.time()
             self.agent.numActiveCenterAgents = len(self.agent.centerAgents)
             
             deliver_task = None
@@ -431,6 +435,8 @@ class Drone(Agent):
                 print(f"{self.agent.id}: With path = {path} Delivering...")
                 await self.agent.deliver_orders(path)
 
+
+            self.agent.total_execution_time = time.time()-self.agent.start_execution_time - self.agent.total_delivery_time/TIME_FACTOR
             # Print stats
             self.agent.print_stats()
 
