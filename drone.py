@@ -53,6 +53,8 @@ class Drone(Agent):
         self.total_num_trips = 0
         self.max_time = 0
         self.min_time = 1000000000
+        self.start_execution_time = None
+        self.total_execution_time = None
     
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
@@ -68,6 +70,7 @@ class Drone(Agent):
         print(f"{self.id} : ----------STATS-----------")
         print(f"{self.id} : Record: {self.record}")
         print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
+        print(f"{self.id} : Protocol Execution Time: {self.total_execution_time}")
         print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
         print(f"{self.id}: Mean time to deliver: {self.total_delivery_time / self.total_delivered_orders }")
         print(f"{self.id}: Total number of trips: {self.total_num_trips }")
@@ -266,6 +269,30 @@ class Drone(Agent):
         # print(f"{self.id}: Passed init")
 
         _, dist1 = self.calculate_path(order=order)
+
+        time1 = dist1/self.velocity
+
+        if (dist1 > self.current_autonomy*1000):
+            return -1.0
+        else:
+            return time1
+            #return distance/(self.velocity*3.6)
+
+    # Receives an order and defines a proposal for IT
+    # If accept -> returns time_needed_to_deliver
+    # If refuse -> returns -1
+    def accept_order(self, order, center):
+
+
+        if self.isDelivering:
+            return -1.0
+        
+        if (order["weight"] + self.current_capacity > self.capacity):
+            return -1.0
+        
+        # print(f"{self.id}: Passed init")
+
+        _, dist1 = self.calculate_path(order=order)
         _, dist2 = self.calculate_path()
 
         time1 = dist1/self.velocity
@@ -374,6 +401,7 @@ class Drone(Agent):
             template_decision = Template()
             template_decision.metadata = {"performative": "decision"}
 
+            self.agent.start_execution_time = time.time()
             self.agent.numActiveCenterAgents = len(self.agent.centerAgents)
             
             deliver_task = None
@@ -440,6 +468,8 @@ class Drone(Agent):
                 print(f"{self.agent.id}: With path = {path} Delivering...")
                 await self.agent.deliver_orders(path)
 
+
+            self.agent.total_execution_time = time.time()-self.agent.start_execution_time - self.agent.total_delivery_time/TIME_FACTOR
             # Print stats
             self.agent.print_stats()
 
