@@ -51,6 +51,8 @@ class Drone(Agent):
         self.total_weight_carried = 0
         self.total_delivered_orders = 0
         self.total_num_trips = 0
+        self.max_time = 0
+        self.min_time = 1000000000
         self.start_execution_time = None
         self.total_execution_time = None
     
@@ -70,9 +72,12 @@ class Drone(Agent):
         print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
         print(f"{self.id} : Protocol Execution Time: {self.total_execution_time}")
         print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
+        print(f"{self.id}: Mean time to deliver: {self.total_delivery_time / self.total_delivered_orders }")
         print(f"{self.id}: Total number of trips: {self.total_num_trips }")
         print(f"{self.id}: Total weight carried: {self.total_weight_carried }")
         print(f"{self.id}: Total distance travelled: {self.total_delivery_distance }")
+        print(f"{self.id}: Maximum delivery time: {self.max_time }")
+        print(f"{self.id}: Minimum delivery time: {self.min_time }")
         print(f"{self.id} : --------------------------")
         return
 
@@ -182,6 +187,10 @@ class Drone(Agent):
                 self.total_weight_carried += order["weight"]
                 self.total_delivery_time += time
                 self.total_delivered_orders += 1
+                if (time > self.max_time):
+                    self.max_time = time
+                if (time < self.min_time and time > 0):
+                    self.min_time = time
 
                 self.current_autonomy -= distance
                 
