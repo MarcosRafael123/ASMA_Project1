@@ -13,7 +13,7 @@ DRONE_DATA = os.path.join(os.getcwd(), DATA_DIR, "delivery_drones.csv")
 # XMPP Host name
 hostname = "localhost"
 
-
+# Create/Initialize drone agents from dataset
 def build_droneAgents(centerAgents):
     droneAgents = {}
     with open(DRONE_DATA, 'r', newline='') as csvfile:
@@ -31,7 +31,7 @@ def build_droneAgents(centerAgents):
             droneAgents[id] = new_drone
     return droneAgents
 
-
+# Create/Initialize center agents from dataset
 def build_centerAgents(files):
     centerAgents = {}
 
@@ -67,6 +67,7 @@ def build_centerAgents(files):
 
     return centerAgents
 
+# Create/Initialize agents from dataset
 def build_enviroment():
 
     # Get all the files related to centers
@@ -90,11 +91,11 @@ def build_enviroment():
 
 async def main():
 
-
+    # build the agents
     (centerAgents, droneAgents) = build_enviroment()
 
-    print("Starting agents")
-
+    print("Enviroment: Starting agents")
+    
     for drone in droneAgents.values():
         drone.setCenters(centerAgents)
 
@@ -111,9 +112,9 @@ async def main():
     await asyncio.gather(*center_starts)
     centerAgents[list(centerAgents.keys())[0]].web.start(hostname="127.0.0.1", port="10001")
 
-
+    # Await end of execution
     await spade.wait_until_finished(drone)
-    print("Agents finished")
+    print("Enviroment: Agents finished")
 
 
 if __name__ == "__main__":

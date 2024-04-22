@@ -40,11 +40,14 @@ class Drone(Agent):
         # {center1: center_obj, center2: center_obj}
         self.centerAgents = {}
 
+        # list of orders (object)
         self.orders = orders if orders is not None else []
+
         self.path = []
 
         self.isDelivering = False
 
+        # Stats
         self.record = [initial_pos]
         self.total_delivery_distance = 0
         self.total_delivery_time = 0
@@ -56,21 +59,23 @@ class Drone(Agent):
         self.start_execution_time = None
         self.total_execution_time = None
     
+    # Set center agents
     def setCenters(self, centerAgents):
         self.centerAgents = centerAgents
         return
     
+    # Add order
     def add_order(self,order):
-
         self.current_capacity += order["weight"]
         self.orders.append(order)
         return
     
+    # Log the current stats
     def print_stats(self):
-        print(f"{self.id} : ----------STATS-----------")
-        print(f"{self.id} : Record: {self.record}")
-        print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
-        print(f"{self.id} : Protocol Execution Time: {self.total_execution_time}")
+        print(f"{self.id}: ----------STATS-----------")
+        print(f"{self.id}: Record: {self.record}")
+        print(f"{self.id}: Total Delivery Time: {self.total_delivery_time}")
+        print(f"{self.id}: Protocol Execution Time: {self.total_execution_time}")
         print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
         print(f"{self.id}: Mean time to deliver: {self.total_delivery_time / self.total_delivered_orders }")
         print(f"{self.id}: Total number of trips: {self.total_num_trips }")
@@ -78,11 +83,11 @@ class Drone(Agent):
         print(f"{self.id}: Total distance travelled: {self.total_delivery_distance }")
         print(f"{self.id}: Maximum delivery time: {self.max_time }")
         print(f"{self.id}: Minimum delivery time: {self.min_time }")
-        print(f"{self.id} : --------------------------")
+        print(f"{self.id}: --------------------------")
         return
 
 
-    # Start and end at the same center
+    # Given a list of orders to deliver, formulate the shortest possible delivery path. Start and end at the same center
     def calculate_path(self, order = None):
         
         orders = self.orders.copy()
@@ -98,8 +103,6 @@ class Drone(Agent):
 
         # Generate all possible permutations of orders
         order_permutations = itertools.permutations(order_ids)
-
-        # print(f"ITER: {list(order_permutations)}")
 
         # Initialize variables to track the best route and its distance
         best_route = None
@@ -132,49 +135,26 @@ class Drone(Agent):
                 best_route = locations_to_visit
                 min_distance = total_distance
 
-
         return best_route, min_distance
 
-    # def calculate_path1(self):
-
-    #     path = []
-
-    #     if self.record == {}:
-    #         path.append(self.current_pos)
-        
-    #     for order in self.orders:
-    #         path.append(order["order_id"])
-
-    #     path.append(self.current_pos)
-        
-
-    #     return path,None
-
-
-    def ready_to_deliver(self):
-        
-        cap_cond = self.current_capacity >= self.capacity*0.75
-
-        return cap_cond
-
-
+    # Given a path to follow, simulate the delivery of orders, updating statistics, position and waiting.
+    # Path example -> ["center1","order1_2", "order1_3", "order1_8","center1"]
     async def deliver_orders(self, path):
 
         self.isDelivering = True
 
-        total_time = 0
-
         for stop in path:
 
             isCenter = stop[:6] == "center"
-
+            
+            # Get coords of current position of drone
             current_pos = None
             if self.current_pos[:5] == "order":
                 current_pos = [item for item in self.orders if item["order_id"] == self.current_pos][0]["destination"]
             else:
                 current_pos = self.centerAgents[self.current_pos].pos
             
-            
+            # If stop is an order -> update
             if not isCenter:
                 order = [item for item in self.orders if item["order_id"] == stop][0]
                 self.current_capacity -= order["weight"]
@@ -183,6 +163,7 @@ class Drone(Agent):
                 time = (distance)/self.velocity
 
                 await asyncio.sleep(time/TIME_FACTOR)
+
                 self.total_delivery_distance += distance
                 self.total_weight_carried += order["weight"]
                 self.total_delivery_time += time
@@ -191,18 +172,16 @@ class Drone(Agent):
                     self.max_time = time
                 if (time < self.min_time and time > 0):
                     self.min_time = time
-
                 self.current_autonomy -= distance
-                
                 self.current_pos = stop
             else:
                 distance = haversine(current_pos,self.centerAgents[stop].pos)
                 time = (distance)/self.velocity
 
                 await asyncio.sleep(time/TIME_FACTOR)
+
                 self.total_delivery_distance += distance
                 self.total_delivery_time += time
-                
                 self.current_autonomy = self.autonomy
                 self.current_pos = stop
 
@@ -210,14 +189,25 @@ class Drone(Agent):
         self.orders = []
         self.record += path
         self.total_num_trips += 1
-
         self.isDelivering = False
 
         return
-    
-    # Receives an order and defines a proposal for IT
+
+    # Return whether or not the drone is ready to deliver
+    def ready_to_deliver(self):
+        
+        cap_cond = self.current_capacity >= self.capacity*0.75
+
+        return cap_cond
+
+# ------------------------------ Heuristics --------------------------------------
+
+    # Heuristic 1:
+
+    # Receives an order and defines a proposal for It
+    # Return the time needed to complete a naive delivery path
     # If accept -> returns time_needed_to_deliver
-    # If refuse -> returns -1
+    # If refuse -> returns -1 -> Impossible to deliver order
     def accept_order(self, order, center):
 
         if self.isDelivering:
@@ -231,8 +221,6 @@ class Drone(Agent):
         # Distance to fetch the order from the center
         distance += haversine(self.centerAgents[self.current_pos].pos, self.centerAgents[center].pos)
 
-        # print(f"{self.id}: distance to fetch order: {distance}")
-
         if (self.current_capacity != 0):
             for i in range(len(self.orders) + 1):
                 if (i==0):
@@ -245,20 +233,19 @@ class Drone(Agent):
         else:
             distance += 2*haversine(self.centerAgents[center].pos, order["destination"])
 
-
-        # print(f"{self.id} : Distance needed to travel: {distance}")
-
         if (distance > self.current_autonomy*1000):
             return -1.0
         else:
             return distance/(self.velocity)
-        
+    
 
-    # Receives an order and defines a proposal for IT
+    # Heuristic 2:
+
+    # Receives an order and defines a proposal for It
+    # Return time needed to complete shortest possible delivery path that includes the order
     # If accept -> returns time_needed_to_deliver
-    # If refuse -> returns -1
+    # If refuse -> returns -1 -> Impossible to deliver order
     def accept_order(self, order, center):
-
 
         if self.isDelivering:
             return -1.0
@@ -266,7 +253,6 @@ class Drone(Agent):
         if (order["weight"] + self.current_capacity > self.capacity):
             return -1.0
         
-        # print(f"{self.id}: Passed init")
 
         _, dist1 = self.calculate_path(order=order)
 
@@ -276,21 +262,21 @@ class Drone(Agent):
             return -1.0
         else:
             return time1
-            #return distance/(self.velocity*3.6)
 
-    # Receives an order and defines a proposal for IT
+    # Heuristic 3:
+
+    # Receives an order and defines a proposal for It
+    # Return difference in time needed between the shortest possible delivery path that includes the order
+    # and the shortest delivery that does not include the order. Basically, the time increase consequence of adding the order.
     # If accept -> returns time_needed_to_deliver
-    # If refuse -> returns -1
+    # If refuse -> returns -1 -> Impossible to deliver order
     def accept_order(self, order, center):
-
 
         if self.isDelivering:
             return -1.0
         
         if (order["weight"] + self.current_capacity > self.capacity):
             return -1.0
-        
-        # print(f"{self.id}: Passed init")
 
         _, dist1 = self.calculate_path(order=order)
         _, dist2 = self.calculate_path()
@@ -304,26 +290,10 @@ class Drone(Agent):
             return time1
         else:
             return time1 - time2
-            #return distance/(self.velocity*3.6)
 
+# --------------------------------------------------------------------------------
 
-    # def accept_order1(self, order, center):
-
-    #     # If order accept -> return time_neeeded
-    #     # If order refuse -> return -1
-
-    #     if self.isDelivering:
-    #         return -1.0
-
-    #     if (order["weight"] + self.current_capacity > self.capacity):
-    #         return -1
-
-    #     if random.randint(1, 10) < 4:
-    #         return -1
-
-    #     return random.randint(1, 10)
-
-
+    # Having a list with all the proposals to be delivered to different center, clear possible conflicts
     def clean_proposals(self,proposals):
 
         # Separate proposals into accepted and rejected
@@ -348,9 +318,11 @@ class Drone(Agent):
         # Return the updated tuple with new proposals
         return [(proposal[0], proposal[1], proposal[2]) for proposal in res_proposals]
 
+    # Normal Drone Behaviour
+    class DroneBehav(OneShotBehaviour):
 
-    class RecvOrdersBehav(OneShotBehaviour):
-
+        # Receive message from all the active center that match the template
+        # If message matches end_template reduce the number of active center agents
         async def recv_msgs(self, template, end_template=None):
             msgs = []
             for center in range(self.agent.numActiveCenterAgents):
@@ -366,6 +338,7 @@ class Drone(Agent):
 
             return msgs
         
+        # Send a proposal message to a certain center
         async def send_proposal(self, center_proposer, order_offer_center, drone_proposal):
 
             msg = Message(to=f"{str(center_proposer )}")
@@ -380,6 +353,8 @@ class Drone(Agent):
 
             return
         
+        # With all the decisions from the centers about the drones proposal,
+        # proccess them (adds the order if positive confirmation)
         def process_confirmations(self,msgs,orders):
             
             for confirmation in msgs:
@@ -392,6 +367,7 @@ class Drone(Agent):
 
         async def run(self):
 
+            # ----- Templates -----
             template_centerFinished = Template()
             template_centerFinished.metadata = {"performative": "end"}
 
@@ -400,6 +376,7 @@ class Drone(Agent):
 
             template_decision = Template()
             template_decision.metadata = {"performative": "decision"}
+            # ---------------------
 
             self.agent.start_execution_time = time.time()
             self.agent.numActiveCenterAgents = len(self.agent.centerAgents)
@@ -429,16 +406,15 @@ class Drone(Agent):
 
                     proposals.append((center_proposer,order_offer_center,drone_proposal))
                 
-                
-                # print(f"{self.agent.id}: proposals {proposals}")
                 # Clear possible conflicts with proposals (drone cannot accept the two orders)
                 proposals = self.agent.clean_proposals(proposals)
-
+                
+                # Print proposal to be made
                 for proposal in proposals:
                     if proposal[2] == -1.0:
-                        print(f"{self.agent.id} : Drone Proposal for {proposal[1]}: Deny")
+                        print(f"{self.agent.id}: Drone Proposal for {proposal[1]}: Deny")
                     else:
-                        print(f"{self.agent.id} : Drone Proposal for {proposal[1]}: Accept! time={proposal[2]}")
+                        print(f"{self.agent.id}: Drone Proposal for {proposal[1]}: Accept! time={proposal[2]}")
                 
                 print(f"{self.agent.id}: Current capacity: {self.agent.current_capacity }")
 
@@ -449,18 +425,16 @@ class Drone(Agent):
                 # Receive confirmations of sent proposals from centers
                 msgs = await self.recv_msgs(template_decision)
 
-                # Process confirmations
-                # for msg in msgs:
-                #     print(f"{self.agent.id} : {msg.body }")
+                # Process confirmations received from centers to proposals made
                 self.process_confirmations(msgs,orders)
                 
+                # If agent is ready to deliver deliver
                 if (not self.agent.isDelivering) and self.agent.ready_to_deliver():
                     path,_ = self.agent.calculate_path()
                     print(f"{self.agent.id}: With path = {path} Delivering...")
                     deliver_task = asyncio.create_task(self.agent.deliver_orders(path))
             
-
-            #If there are undelivered drone attributed orders after termination -> deliver them
+            # If there are undelivered drone attributed orders after termination -> deliver them
             if deliver_task:
                 await deliver_task
             if len(self.agent.orders) > 0:
@@ -473,18 +447,11 @@ class Drone(Agent):
             # Print stats
             self.agent.print_stats()
 
-            await asyncio.sleep(100)
-
             # Stop agent from behavior
-            # await self.agent.stop()
+            await self.agent.stop()
 
     async def setup(self):
         print(f"{self.id}: agent started")
 
-        recvOrder = self.RecvOrdersBehav()
-        self.add_behaviour(recvOrder)
-
-
-        # print(self.presence.state)  # Gets your current PresenceState instance.
-
-        # print(self.presence.is_available())  # Returns a boolean to report wether the agent is available or not
+        drone_behav = self.DroneBehav()
+        self.add_behaviour(drone_behav)
