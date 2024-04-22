@@ -94,7 +94,8 @@ async def main():
     # build the agents
     (centerAgents, droneAgents) = build_enviroment()
 
-    print("Enviroment: Starting agents")
+    
+    ("Enviroment: Starting agents")
     
     for drone in droneAgents.values():
         drone.setCenters(centerAgents)

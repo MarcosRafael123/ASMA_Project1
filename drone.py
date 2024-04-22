@@ -56,8 +56,8 @@ class Drone(Agent):
         self.total_num_trips = 0
         self.max_time = 0
         self.min_time = 1000000000
-        self.start_execution_time = None
-        self.total_execution_time = None
+        self.start_protocol_execution_time = None
+        self.total_protocol_execution_time = None
     
     # Set center agents
     def setCenters(self, centerAgents):
@@ -72,11 +72,11 @@ class Drone(Agent):
     
     # Log the current stats
     def print_stats(self):
-        print(f"{self.id} : ----------STATS-----------")
-        print(f"{self.id} : Record: {self.record}")
-        print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
-        print(f"{self.id} : Protocol Execution Time: {self.total_execution_time}")
-        print(f"{self.id} : Occupancy ratio: {(self.total_delivery_time / self.total_execution_time) * 100}%")
+        print(f"{self.id}: ----------STATS-----------")
+        print(f"{self.id}: Record: {self.record}")
+        print(f"{self.id}: Total Delivery Time: {self.total_delivery_time}")
+        print(f"{self.id}: Protocol Execution Time: {self.total_protocol_execution_time}")
+        print(f"{self.id}: Occupancy ratio: {((self.total_delivery_time / (self.total_protocol_execution_time + self.total_delivery_time)) * 100):.2f}%")
         print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
         print(f"{self.id}: Mean time to deliver: {self.total_delivery_time / self.total_delivered_orders }")
         print(f"{self.id}: Total number of trips: {self.total_num_trips }")
@@ -379,7 +379,7 @@ class Drone(Agent):
             template_decision.metadata = {"performative": "decision"}
             # ---------------------
 
-            self.agent.start_execution_time = time.time()
+            self.agent.start_protocol_execution_time = time.time()
             self.agent.numActiveCenterAgents = len(self.agent.centerAgents)
             
             deliver_task = None
@@ -444,7 +444,7 @@ class Drone(Agent):
                 await self.agent.deliver_orders(path)
 
 
-            self.agent.total_execution_time = time.time()-self.agent.start_execution_time - self.agent.total_delivery_time/TIME_FACTOR
+            self.agent.total_protocol_execution_time = time.time()-self.agent.start_protocol_execution_time - self.agent.total_delivery_time/TIME_FACTOR
             # Print stats
             self.agent.print_stats()
 
