@@ -72,10 +72,11 @@ class Drone(Agent):
     
     # Log the current stats
     def print_stats(self):
-        print(f"{self.id}: ----------STATS-----------")
-        print(f"{self.id}: Record: {self.record}")
-        print(f"{self.id}: Total Delivery Time: {self.total_delivery_time}")
-        print(f"{self.id}: Protocol Execution Time: {self.total_execution_time}")
+        print(f"{self.id} : ----------STATS-----------")
+        print(f"{self.id} : Record: {self.record}")
+        print(f"{self.id} : Total Delivery Time: {self.total_delivery_time}")
+        print(f"{self.id} : Protocol Execution Time: {self.total_execution_time}")
+        print(f"{self.id} : Occupancy ratio: {(self.total_delivery_time / self.total_execution_time) * 100}%")
         print(f"{self.id}: Total orders delivered: {self.total_delivered_orders }")
         print(f"{self.id}: Mean time to deliver: {self.total_delivery_time / self.total_delivered_orders }")
         print(f"{self.id}: Total number of trips: {self.total_num_trips }")
