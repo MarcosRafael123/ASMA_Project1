@@ -19,7 +19,11 @@ UP = 3
 
 MAPS = {
     "4x4": ["SFFF", "FHFH", "FFFH", "HFFG"],
-    "5x5": ["SFFFF", "FHFHF", "FFFHF", "HFFGF","HFFGF"],
+    "5x5": ["SFFHF",
+            "FFHFF",
+            "FFFHF",
+            "HFFFH",
+            "FHFFG"],
     "8x8": [
         "SFFFFFFF",
         "FFFFFFFF",
@@ -258,7 +262,16 @@ class FrozenLakeEnv(Env):
             newstate = to_s(newrow, newcol)
             newletter = desc[newrow, newcol]
             terminated = bytes(newletter) in b"GH"
-            reward = float(newletter == b"G")
+            # reward = float(newletter == b"G")
+
+            reward = 0.0
+            if bytes(newletter) == b"G":
+                reward = 500.0  # Reaching the goal
+            elif bytes(newletter) == b"H":
+                reward = -10.0  # Reaching the goal
+            else:
+                reward = -0.01  # Penalize each step taken
+
             return newstate, reward, terminated
 
         for row in range(nrow):
@@ -272,9 +285,18 @@ class FrozenLakeEnv(Env):
                     else:
                         if is_slippery:
                             for b in [(a - 1) % 4, a, (a + 1) % 4]:
-                                li.append(
-                                    (1.0 / 3.0, *update_probability_matrix(row, col, b))
-                                )
+                                if b == a:
+                                    li.append(
+                                        (0.7, *update_probability_matrix(row, col, b))
+                                    )
+                                else:
+                                    li.append(
+                                        (0.15, *update_probability_matrix(row, col, b))
+                                    )
+
+                                # li.append(
+                                #     (1.0 / 3.0, *update_probability_matrix(row, col, b))
+                                # )
                         else:
                             li.append((1.0, *update_probability_matrix(row, col, a)))
 

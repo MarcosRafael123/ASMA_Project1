@@ -1,7 +1,7 @@
 import gymnasium as gym
 from enviroment.enviroment import FrozenLakeEnv
 
-from stable_baselines3 import A2C
+from sb3_contrib import TRPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import configure
@@ -11,22 +11,22 @@ import statistics
 
 def main():
 
-    # Create enviroment for training
-    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/A2C_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
+    # Create enviroment for training (no render)
+    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/TRPO_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
     # Set the logger to csv and stdout
-    new_logger = configure("logs/A2C_logs", ["stdout", "csv"])
+    new_logger = configure("logs/TRPO_logs", ["stdout", "csv"])
 
-    # Create model, set the logger and train model
-    model = A2C("MlpPolicy", env, verbose=1, learning_rate=0.1, device='cuda')
+    # Create model, set the logger, and train the moodel
+    model = TRPO("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
     model.set_logger(new_logger)
-    model.learn(total_timesteps=50_000, progress_bar=True)
+    model.learn(total_timesteps=20_000, progress_bar=True)
 
     # Save the model
-    model.save("A2C_frozenLake")
+    model.save("TRPO_frozenLake")
 
     # Load the model
-    # model = A2C.load("A2C_frozenLake_best_slip_v2")
+    # model = TRPO.load("TRPO_frozenLake_final")
 
     # Create enviroment for evaluation and visualization 
     vec_env = make_vec_env(FrozenLakeEnv, n_envs=1, env_kwargs={'desc': None, 'map_name': "5x5", 'is_slippery': True, 'render_mode': "human"})
