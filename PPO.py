@@ -11,13 +11,15 @@ import statistics
 
 def main():
 
-    # Create enviroment for training (no render)
+    # ---------- Training ------------
+
+    # # Create enviroment for training (no render)
     # env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/PPO_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
-    # Set the logger to csv and stdout
+    # # Set the logger to csv and stdout
     # new_logger = configure("logs/PPO_logs", ["stdout", "csv"])
 
-    # Create model, set the logger, and train the moodel
+    # # Create model, set the logger, and train the moodel
     # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
     # model.set_logger(new_logger)
     # model.learn(total_timesteps=20_000, progress_bar=True)
@@ -28,11 +30,13 @@ def main():
     #(n_steps depends on algo used (PPO default is 2048 steps)) (example: if log_interval=1 and n_steps for the algorithm is 2048, the logger will write a row every 2048 timesteps)
     # more info about logger stats in https://stable-baselines3.readthedocs.io/en/master/common/logger.html
 
+    # --------------------------------
+
     # Save the model
-    # model.save("ppo_frozenLake")
+    # model.save("PPO_frozenLake")
 
     # Load the model
-    model = PPO.load("ppo_frozenLake_final")
+    model = PPO.load("PPO_frozenLake_final")
 
     # Create enviroment for evaluation and visualization
     vec_env = make_vec_env(FrozenLakeEnv, n_envs=1, env_kwargs={'desc': None, 'map_name': "5x5", 'is_slippery': True, 'render_mode': "human"})

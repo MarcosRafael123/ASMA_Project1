@@ -10,23 +10,24 @@ import os
 import statistics
 
 def main():
-
-    # Create enviroment for training
-    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/A2C_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
+    # ---------- Training ------------
+    # # Create enviroment for training
+    # env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/A2C_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
-    # Set the logger to csv and stdout
-    new_logger = configure("logs/A2C_logs", ["stdout", "csv"])
+    # # Set the logger to csv and stdout
+    # new_logger = configure("logs/A2C_logs", ["stdout", "csv"])
 
-    # Create model, set the logger and train model
-    model = A2C("MlpPolicy", env, verbose=1, learning_rate=0.1, device='cuda')
-    model.set_logger(new_logger)
-    model.learn(total_timesteps=50_000, progress_bar=True)
+    # # Create model, set the logger and train model
+    # model = A2C("MlpPolicy", env, verbose=1, learning_rate=0.1, device='cuda')
+    # model.set_logger(new_logger)
+    # model.learn(total_timesteps=50_000, progress_bar=True)
+    # --------------------------------
 
     # Save the model
-    model.save("A2C_frozenLake")
+    # model.save("A2C_frozenLake")
 
     # Load the model
-    # model = A2C.load("A2C_frozenLake_best_slip_v2")
+    model = A2C.load("A2C_frozenLake_final")
 
     # Create enviroment for evaluation and visualization 
     vec_env = make_vec_env(FrozenLakeEnv, n_envs=1, env_kwargs={'desc': None, 'map_name': "5x5", 'is_slippery': True, 'render_mode': "human"})

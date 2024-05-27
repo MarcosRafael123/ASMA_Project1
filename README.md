@@ -16,53 +16,67 @@ pip install stable-baselines3[extra]
 pip install sb3-contrib -> Adds experimental algos: TRPO
 
 
-
+Changes to enviroment
 Added a new map
 changed probability of slipping 30% (15% in each opposite dir) 
 Added penalty for each step -> Had to reinforce reward for reaching goal, makes agent more prone to explore.
+    timestep: -0.01
+    hole: -10.0
+    goal: 500.0
 
+
+Training:
+trained with lr=0.01
+around 20000 timesteps
+
+running every algo:
+python .\A2C.py
+python .\ARS.py
+python .\DQN.py
+python .\PPO.py
+python .\TRPO.py
 
 
 
 A2C:
-reward_per_ep: [-10.64, -10.48, -10.34, -10.11, -10.08, -10.59, -11.05, -10.31, -10.44, -10.62]
-timesteps_per_ep: [65, 49, 35, 12, 9, 60, 106, 32, 45, 63]
-mean_reward: -10.466
-std_reward: 0.2842612257140332
-mean_timesteps: 47.6
-std_timesteps: 28.426122571403305
+reward_per_ep: [-10.42, -10.42, -10.03, -10.09, -11.05, -10.39, -10.59, -10.09, -10.61, -10.26]
+timesteps_per_ep: [43, 43, 4, 10, 106, 40, 60, 10, 62, 27]
+mean_reward: -10.395
+std_reward: 0.30768851493388955
+mean_timesteps: 40.5
+std_timesteps: 30.76885149338893
 
 ARS: -> Tenta dar o minimo numero de passos possível
-reward_per_ep: [-10.02, -10.05, -10.03, -10.03, -10.02, -10.03, -10.02, -10.04, -10.03, -10.02]
-timesteps_per_ep: [3, 6, 4, 4, 3, 4, 3, 5, 4, 3]
-mean_reward: -10.029
-std_reward: 0.009944289260117737
-mean_timesteps: 3.9
-std_timesteps: 0.9944289260117531
+reward_per_ep: [-10.02, -10.04, -10.03, -10.03, -10.02, -10.02, -10.02, -10.02, -10.02, -10.02]
+timesteps_per_ep: [3, 5, 4, 4, 3, 3, 3, 3, 3, 3]
+mean_reward: -10.024
+std_reward: 0.006992058987800862
+mean_timesteps: 3.4
+std_timesteps: 0.6992058987801011
 
 DQN:
-reward_per_ep: [-10.24, -10.71, -10.52, -10.56, -11.82, -10.23, -10.13, -10.26, -10.08, -10.28]
-timesteps_per_ep: [25, 72, 53, 57, 183, 24, 14, 27, 9, 29]
-mean_reward: -10.483
-std_reward: 0.5107086579776511
-mean_timesteps: 49.3
-std_timesteps: 51.0708657977651
+reward_per_ep: [-10.59, -10.49, -11.23, -10.37, -11.17, -10.08, -10.1, -10.27, -10.24, -10.15]
+timesteps_per_ep: [60, 50, 124, 38, 118, 9, 11, 28, 25, 16]
+mean_reward: -10.469
+std_reward: 0.41855439046529885
+mean_timesteps: 47.9
+std_timesteps: 41.855439046529874
 
 PPO:
-reward_per_ep: [499.91, 499.92, -10.17, -10.09, 499.91, -10.04, 499.89, 499.91, 499.91, 499.93]
-timesteps_per_ep: [10, 9, 18, 10, 10, 5, 12, 10, 10, 8]
-mean_reward: 346.908
-std_reward: 246.35892734878607
-mean_timesteps: 10.2
-std_timesteps: 3.2930904093942583
+reward_per_ep: [499.88, -10.05, 499.91, 499.93, 499.9, 499.91, -10.07, 499.86, 499.88, 499.88]
+timesteps_per_ep: [13, 6, 10, 8, 11, 10, 8, 15, 13, 13]
+mean_reward: 397.903
+std_reward: 215.01538115782427
+mean_timesteps: 10.7
+std_timesteps: 2.8303906287138374
 
 TRPO:
-reward_per_ep: [-10.04, -10.03, -10.09, 499.93, 499.91, 499.93, -10.06, 499.92, -10.04, 499.91]
-timesteps_per_ep: [5, 4, 10, 8, 10, 8, 7, 9, 5, 10]
-mean_reward: 244.934
-std_reward: 268.7788443725105
-mean_timesteps: 7.6
-std_timesteps: 2.270584848790187
+reward_per_ep: [-10.04, 499.9, 499.93, -10.06, 499.9, 499.88, 499.9, -10.16, 499.88, -10.06]
+timesteps_per_ep: [5, 11, 8, 7, 11, 13, 11, 17, 13, 7]
+mean_reward: 295.907
+std_reward: 263.35168113506825
+mean_timesteps: 10.3
+std_timesteps: 3.591656999213594
 
 
 

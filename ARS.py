@@ -11,22 +11,24 @@ import statistics
 
 def main():
 
-    # Create enviroment for training (no render)
-    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/ARS_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
+    # ---------- Training ------------
+    # # Create enviroment for training (no render)
+    # env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/ARS_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
-    # Set the logger to csv and stdout
-    new_logger = configure("logs/ARS_logs", ["stdout", "csv"])
+    # # Set the logger to csv and stdout
+    # new_logger = configure("logs/ARS_logs", ["stdout", "csv"])
 
-    # Create model, set the logger, and train the moodel
-    model = ARS("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
-    model.set_logger(new_logger)
-    model.learn(total_timesteps=20_000, progress_bar=True)
+    # # Create model, set the logger, and train the moodel
+    # model = ARS("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
+    # model.set_logger(new_logger)
+    # model.learn(total_timesteps=20_000, progress_bar=True)
+    # --------------------------------
 
     # Save the model
-    model.save("ARS_frozenLake")
+    # model.save("ARS_frozenLake")
 
     # Load the model
-    # model = ARS.load("ARS_frozenLake_final")
+    model = ARS.load("ARS_frozenLake_final")
 
     # Create enviroment for evaluation and visualization 
     vec_env = make_vec_env(FrozenLakeEnv, n_envs=1, env_kwargs={'desc': None, 'map_name': "5x5", 'is_slippery': True, 'render_mode': "human"})
