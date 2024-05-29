@@ -26,16 +26,25 @@ Added penalty for each step -> Had to reinforce reward for reaching goal, makes 
 
 
 Training:
-trained with lr=0.01
-around 20000 timesteps
+- trained with lr=0.01
+- around 20000 timesteps
 
-running every algo:
+By Running:
+```bash
+tensorboard --logdir tensorboard_logs
+```
+We can have access to tensorboard we some information about the training of the algorithms.
+
+
+To run the program we can just run any algo and see some results/update the logs:
 python .\A2C.py
 python .\ARS.py
 python .\DQN.py
 python .\PPO.py
 python .\TRPO.py
 
+
+Some Output data a
 
 
 A2C:

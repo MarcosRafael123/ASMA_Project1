@@ -5,23 +5,26 @@ from sb3_contrib import TRPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import configure
-
-import os
 import statistics
+import os
+
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 def main():
     	
     # ---------- Training ------------
-    # # Create enviroment for training (no render)
-    # env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/TRPO_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
+    # Create enviroment for training (no render)
+    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/TRPO_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
-    # # Set the logger to csv and stdout
-    # new_logger = configure("logs/TRPO_logs", ["stdout", "csv"])
+    # Set the logger to csv and stdout
+    logger = configure("logs/TRPO_logs", ["stdout", "csv"])
+    tensorboard_logger = configure("tensorboard_logs/TRPO", ["tensorboard"])
 
-    # # Create model, set the logger, and train the moodel
-    # model = TRPO("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
-    # model.set_logger(new_logger)
-    # model.learn(total_timesteps=20_000, progress_bar=True)
+    # Create model, set the logger, and train the model
+    model = TRPO("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
+    model.set_logger(logger)
+    model.set_logger(tensorboard_logger)
+    model.learn(total_timesteps=20_000, progress_bar=True)
     # --------------------------------
 
     # Save the model

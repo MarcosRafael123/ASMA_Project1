@@ -11,16 +11,18 @@ import statistics
 
 def main():
     # ---------- Training ------------
-    # # Create enviroment for training
-    # env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/DQN_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
+    # Create enviroment for training
+    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/DQN_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
-    # # Set the logger to csv and stdout
-    # new_logger = configure("logs/DQN_logs", ["stdout", "csv"])
+    # Set the logger to csv and stdout
+    logger = configure("logs/DQN_logs", ["stdout", "csv"])
+    tensorboard_logger = configure("tensorboard_logs/DQN", ["tensorboard"])
 
-    # # Create model, set the logger and train model
-    # model = DQN("MlpPolicy", env, learning_rate=0.1, verbose=1, device='cuda')
-    # model.set_logger(new_logger)
-    # model.learn(total_timesteps=20_000, progress_bar=True)
+    # Create model, set the logger and train model
+    model = DQN("MlpPolicy", env, learning_rate=0.1, verbose=1, device='cuda')
+    model.set_logger(logger)
+    model.set_logger(tensorboard_logger)
+    model.learn(total_timesteps=20_000, progress_bar=True)
     # --------------------------------
 
     # Save the model
