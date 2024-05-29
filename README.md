@@ -14,6 +14,8 @@ pip install gymnasium[box2d] -> For 'LunarLander-v2' Enviroment
 pip install stable-baselines3
 pip install stable-baselines3[extra]
 pip install sb3-contrib -> Adds experimental algos: TRPO
+pip install tensorFlow
+pip install tensorboard
 
 
 Changes to enviroment

@@ -13,18 +13,18 @@ def main():
 
     # ---------- Training ------------
 
-    # Create enviroment for training (no render)
-    env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/PPO_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
+    # # Create enviroment for training (no render)
+    # env = make_vec_env(FrozenLakeEnv, n_envs=1, monitor_dir="logs/PPO_monitor_logs", env_kwargs={'map_name': "5x5", 'is_slippery': True})
     
-    # Set the logger to csv and stdout
-    logger = configure("logs/PPO_logs", ["stdout", "csv"])
-    tensorboard_logger = configure("tensorboard_logs/PPO", ["tensorboard"])
+    # # Set the logger to csv and stdout
+    # logger = configure("logs/PPO_logs", ["stdout", "csv"])
+    # tensorboard_logger = configure("tensorboard_logs/PPO", ["tensorboard"])
 
-    # Create model, set the logger, and train the moodel
-    model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
-    model.set_logger(logger)
-    model.set_logger(tensorboard_logger)
-    model.learn(total_timesteps=20_000, progress_bar=True)
+    # # Create model, set the logger, and train the moodel
+    # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.01, device='cuda')
+    # model.set_logger(logger)
+    # model.set_logger(tensorboard_logger)
+    # model.learn(total_timesteps=20_000, progress_bar=True)
 
     # While training we will get two types of logs
     # PPO_monitor_logs -> writes a row (reward,length,time) for every training episode
@@ -44,7 +44,7 @@ def main():
     vec_env = make_vec_env(FrozenLakeEnv, n_envs=1, env_kwargs={'desc': None, 'map_name': "5x5", 'is_slippery': True, 'render_mode': "human"})
 
     # Evaluate model's performance
-    rewards_per_ep, timesteps_per_ep = evaluate_policy(model, vec_env, n_eval_episodes=10, return_episode_rewards=True)
+    rewards_per_ep, timesteps_per_ep = evaluate_policy(model, vec_env, n_eval_episodes=25, return_episode_rewards=True)
     print("reward_per_ep:",rewards_per_ep)
     print("timesteps_per_ep:",timesteps_per_ep)
     print("mean_reward:",statistics.mean(rewards_per_ep))
